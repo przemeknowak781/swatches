@@ -115,21 +115,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-preview_placeholder = st.container()
-
-if 'generated' not in st.session_state:
-    st.session_state.generated = False
-
-if 'zip_buffer' not in st.session_state:
-    st.session_state.zip_buffer = None
-
-with preview_placeholder:
-    if st.session_state.generated:
-        st.markdown("### Preview")
-        full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "\n".join(st.session_state.preview_blocks) + "</div>"
-        st.markdown(full_html, unsafe_allow_html=True)
-        st.download_button("📦 Download all as ZIP", st.session_state.zip_buffer, file_name="swatches.zip", mime="application/zip")
-
 st.markdown('<div class="responsive-columns">', unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3)
@@ -185,6 +170,7 @@ if uploaded_files and positions:
                     preview_html_blocks.append(block)
 
         zip_buffer.seek(0)
-        st.session_state.generated = True
-        st.session_state.zip_buffer = zip_buffer
-        st.session_state.preview_blocks = preview_html_blocks
+        st.markdown("### Preview")
+        full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "\n".join(preview_html_blocks) + "</div>"
+        st.markdown(full_html, unsafe_allow_html=True)
+        st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")
