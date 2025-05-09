@@ -46,7 +46,7 @@ st.markdown("""
         min-height: 250px; /* Ensure it has some height even when empty */
         align-items: flex-start; /* Align items to the top */
         margin-bottom: 20px; /* Space below the preview zone */
-        background: #f0f0f0; /* Changed preview background to light gray */
+        background: #ffffff; /* Changed preview background to white */
     }
 
     /* Styles for individual preview items */
@@ -60,7 +60,7 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Subtle shadow */
         padding: 10px; /* Inner padding for the item */
         border-radius: 8px;
-        background: #ffffff;
+        background: #f0f0f0; /* Changed preview item background to light gray */
         border: 1px solid #e0e0e0;
     }
 
@@ -380,24 +380,24 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
     if swatch_border_thickness_px > 0: # Only draw if swatch border is present
         if position == 'top':
             # Draw the separating line using draw.line
-            line_start = (main_border, main_border + actual_swatch_size_px + separating_line_thickness // 2)
-            line_end = (main_border + img_w, main_border + actual_swatch_size_px + separating_line_thickness // 2)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=separating_line_thickness)
+            line_start = (main_border, main_border + actual_swatch_size_px)
+            line_end = (main_border + img_w, main_border + actual_swatch_size_px)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
         elif position == 'bottom':
              # Draw the separating line using draw.line
-            line_start = (main_border, main_border + img_h + separating_line_thickness // 2)
-            line_end = (main_border + img_w, main_border + img_h + separating_line_thickness // 2)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=separating_line_thickness)
+            line_start = (main_border, main_border + img_h)
+            line_end = (main_border + img_w, main_border + img_h)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
         elif position == 'left':
              # Draw the separating line using draw.line
-            line_start = (main_border + actual_swatch_size_px + separating_line_thickness // 2, main_border)
-            line_end = (main_border + actual_swatch_size_px + separating_line_thickness // 2, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=separating_line_thickness)
+            line_start = (main_border + actual_swatch_size_px, main_border)
+            line_end = (main_border + actual_swatch_size_px, main_border + img_h)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
         elif position == 'right':
              # Draw the separating line using draw.line
-            line_start = (main_border + img_w + separating_line_thickness // 2, main_border)
-            line_end = (main_border + img_w + separating_line_thickness // 2, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=separating_line_thickness)
+            line_start = (main_border + img_w, main_border)
+            line_end = (main_border + img_w, main_border + img_h)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
 
 
     return canvas
