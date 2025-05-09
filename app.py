@@ -25,7 +25,6 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
     else:
         canvas = Image.new("RGB", (img_w + swatch_size + 2*border, img_h + 2*border), border_color)
 
-    # Paste image
     image_position = {
         'top': (border, swatch_size + border),
         'bottom': (border, border),
@@ -44,12 +43,12 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
             y0 = y_offset - swatch_size if position == 'top' else y_offset
             y1 = y0 + swatch_size
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
-            if remove_adjacent_border:
-                if position == 'top':
-                    draw.line([(x0, y1), (x1, y1)], fill=tuple(color), width=swatch_border_thickness)
-                else:
-                    draw.line([(x0, y0), (x1, y0)], fill=tuple(color), width=swatch_border_thickness)
-            draw.rectangle([x0, y0, x1, y1], outline=swatch_border_color, width=swatch_border_thickness)
+            if not remove_adjacent_border or i != 0:
+                draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            if not remove_adjacent_border or i != len(colors)-1:
+                draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
+            draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
     else:
         swatch_height = image.height // len(colors)
         x_offset = border if position == 'left' else border + image.width
@@ -59,12 +58,12 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
             x0 = x_offset - swatch_size if position == 'left' else x_offset
             x1 = x0 + swatch_size
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
-            if remove_adjacent_border:
-                if position == 'left':
-                    draw.line([(x1, y0), (x1, y1)], fill=tuple(color), width=swatch_border_thickness)
-                else:
-                    draw.line([(x0, y0), (x0, y1)], fill=tuple(color), width=swatch_border_thickness)
-            draw.rectangle([x0, y0, x1, y1], outline=swatch_border_color, width=swatch_border_thickness)
+            if not remove_adjacent_border or i != 0:
+                draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
+            if not remove_adjacent_border or i != len(colors)-1:
+                draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
 
     return canvas
 
@@ -86,7 +85,7 @@ border_thickness = st.slider("Border thickness (in % of image width)", min_value
 swatch_border_thickness = st.slider("Swatch border thickness (in px)", min_value=0, max_value=10, value=1)
 border_color = st.color_picker("Image border color", value="#FFFFFF")
 swatch_border_color = st.color_picker("Swatch border color", value="#000000")
-remove_adjacent_border = st.checkbox("Remove swatch border edge touching image", value=False)
+remove_adjacent_border = st.checkbox("Remove swatch border edges touching outer canvas edge", value=False)
 
 if uploaded_files and positions:
     zip_buffer = io.BytesIO()
