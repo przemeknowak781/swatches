@@ -204,7 +204,7 @@ if uploaded_files and positions:
                     continue
 
                 try:
-                    palette = extract_palette(image, num_colors, quantize
+                    palette = extract_palette(image, num_colors, quantize_method=quantize_method)
                 except Exception as e:
                     st.warning(f"⚠️ `{uploaded_file.name}` could not be processed for swatches. Skipped.")
                     continue
