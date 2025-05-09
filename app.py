@@ -163,7 +163,10 @@ with col3:
 
 # --- Processing & Preview ---
 if uploaded_files and positions:
-    with st.spinner("Generating previews, please wait..."):
+    st.markdown("""
+    <div style='text-align: center; font-size: 24px; font-weight: bold; margin-top: 30px;'>⏳ Please wait, generating...</div>
+""", unsafe_allow_html=True)
+with st.spinner("Generating previews, please wait..."):
         zip_buffer = io.BytesIO()
         preview_html_blocks = []
 
@@ -198,6 +201,7 @@ if uploaded_files and positions:
 
         with preview_container:
             st.markdown("### Preview")
-            full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "\n".join(preview_html_blocks) + "</div>"
+            full_html = "<div style='display: flex; overflow-x: auto; gap: 30px; padding: 20px;'>" + "\n".join(preview_html_blocks) + "</div>"
             st.markdown(full_html, unsafe_allow_html=True)
-            st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")
+            st.markdown("<br>", unsafe_allow_html=True)
+st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip", use_container_width=True)
