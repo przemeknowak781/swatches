@@ -115,6 +115,21 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+preview_placeholder = st.container()
+
+if 'generated' not in st.session_state:
+    st.session_state.generated = False
+
+if 'zip_buffer' not in st.session_state:
+    st.session_state.zip_buffer = None
+
+with preview_placeholder:
+    if st.session_state.generated:
+        st.markdown("### Preview")
+        full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "\n".join(st.session_state.preview_blocks) + "</div>"
+        st.markdown(full_html, unsafe_allow_html=True)
+        st.download_button("📦 Download all as ZIP", st.session_state.zip_buffer, file_name="swatches.zip", mime="application/zip")
+
 st.markdown('<div class="responsive-columns">', unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3)
@@ -139,42 +154,37 @@ with col3:
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-preview_placeholder = st.container()
-
 if uploaded_files and positions:
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
+    with st.spinner("Generating previews, please wait..."):
+        zip_buffer = io.BytesIO()
         preview_html_blocks = []
+        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
+            for uploaded_file in uploaded_files:
+                image = Image.open(uploaded_file).convert("RGB")
+                palette = extract_palette(image, num_colors)
+                border_px = int(image.width * (border_thickness / 100))
 
-        for uploaded_file in uploaded_files:
-            image = Image.open(uploaded_file).convert("RGB")
-            palette = extract_palette(image, num_colors)
-            border_px = int(image.width * (border_thickness / 100))
+                for pos in positions:
+                    result_img = draw_layout(
+                        image, palette, pos, border_px, swatch_border_thickness,
+                        border_color, swatch_border_color, swatch_size, remove_adjacent_border
+                    )
+                    img_byte_arr = io.BytesIO()
+                    name = f"{uploaded_file.name.rsplit('.', 1)[0]}_{pos}.jpg"
+                    result_img.save(img_byte_arr, format='JPEG', quality=95)
+                    zipf.writestr(name, img_byte_arr.getvalue())
 
-            for pos in positions:
-                result_img = draw_layout(
-                    image, palette, pos, border_px, swatch_border_thickness,
-                    border_color, swatch_border_color, swatch_size, remove_adjacent_border
-                )
-                img_byte_arr = io.BytesIO()
-                name = f"{uploaded_file.name.rsplit('.', 1)[0]}_{pos}.jpg"
-                result_img.save(img_byte_arr, format='JPEG', quality=95)
-                zipf.writestr(name, img_byte_arr.getvalue())
+                    result_img.thumbnail((200, 200))
+                    with io.BytesIO() as buffer:
+                        result_img.save(buffer, format="PNG")
+                        img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                    block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; background: #eeeeee;'>"
+                    block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
+                    block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
+                    block += "</div>"
+                    preview_html_blocks.append(block)
 
-                result_img.thumbnail((200, 200))
-                with io.BytesIO() as buffer:
-                    result_img.save(buffer, format="PNG")
-                    img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-                block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; background: #eeeeee;'>"
-                block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
-                block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
-                block += "</div>"
-                preview_html_blocks.append(block)
-
-    zip_buffer.seek(0)
-    st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")
-
-    with preview_placeholder:
-        st.markdown("### Preview")
-        full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "\n".join(preview_html_blocks) + "</div>"
-        st.markdown(full_html, unsafe_allow_html=True)
+        zip_buffer.seek(0)
+        st.session_state.generated = True
+        st.session_state.zip_buffer = zip_buffer
+        st.session_state.preview_blocks = preview_html_blocks
