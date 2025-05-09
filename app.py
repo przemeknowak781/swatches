@@ -95,6 +95,11 @@ with col1:
     st.subheader("Upload Images")
     uploaded_files = st.file_uploader("Upload images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
+    st.subheader("Download Size")
+    resize_option = st.radio("Resize method", ["Original size", "Scale (%)"], index=0)
+    if resize_option == "Scale (%)":
+        scale_percent = st.slider("Scale percent", 10, 200, 100)
+
 with col2:
     st.subheader("Layout Settings")
     positions = []
@@ -126,18 +131,6 @@ with col3:
     swatch_border_color = st.color_picker("Swatch border color", "#FFFFFF")
     remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
 
-st.markdown("---")
-
-# --- Resize Options ---
-st.subheader("Download Image Size")
-resize_option = st.radio("Resize method", ["Original size", "Custom size", "Scale (%)"], index=0)
-
-if resize_option == "Custom size":
-    resize_width = st.number_input("Width (px)", min_value=50, value=800)
-    resize_height = st.number_input("Height (px)", min_value=50, value=600)
-elif resize_option == "Scale (%)":
-    scale_percent = st.slider("Scale percent", 10, 200, 100)
-
 # --- Process & Preview ---
 if uploaded_files and positions:
     with st.spinner("Generating previews..."):
@@ -157,9 +150,7 @@ if uploaded_files and positions:
                     )
 
                     # Resize the image before saving
-                    if resize_option == "Custom size":
-                        result_img = result_img.resize((resize_width, resize_height), Image.LANCZOS)
-                    elif resize_option == "Scale (%)":
+                    if resize_option == "Scale (%)":
                         new_w = int(result_img.width * scale_percent / 100)
                         new_h = int(result_img.height * scale_percent / 100)
                         result_img = result_img.resize((new_w, new_h), Image.LANCZOS)
