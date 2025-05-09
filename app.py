@@ -35,7 +35,16 @@ st.markdown("""
 def extract_palette(image, num_colors=6):
     img = image.convert('RGB')
     data = np.array(img).reshape((-1, 3))
-    kmeans = KMeans(n_clusters=num_colors, random_state=42).fit(data)
+
+    unique_colors = np.unique(data, axis=0)
+    if len(unique_colors) < num_colors:
+        st.warning("⚠️ Image contains too few distinct colors for clustering. Skipped.")
+        raise ValueError("Too few unique colors")
+
+    if data.shape[0] > 1_000_000:
+        data = data[np.random.choice(data.shape[0], 1_000_000, replace=False)]
+
+    kmeans = KMeans(n_clusters=num_colors, random_state=42, n_init='auto').fit(data)
     return kmeans.cluster_centers_.astype(int)
 
 # --- Draw Layout Function ---
@@ -192,7 +201,11 @@ if uploaded_files and positions:
                     st.warning(f"⚠️ `{uploaded_file.name}` could not be processed due to a read error. Skipped.")
                     continue
 
-                palette = extract_palette(image, num_colors)
+                try:
+                    palette = extract_palette(image, num_colors)
+                except Exception as e:
+                    st.warning(f"⚠️ `{uploaded_file.name}` could not be processed for swatches. Skipped.")
+                    continue
                 border_px = int(image.width * (border_thickness / 100))
 
                 for pos in positions:
