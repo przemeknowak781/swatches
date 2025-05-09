@@ -165,28 +165,23 @@ st.markdown("""
         100% { transform: rotate(360deg); }
     }
 
-    /* Custom style for the red button */
-    div.stButton > button {
-        background-color: #FF4B4B !important; /* Red background */
+    /* Custom style for the blue "Large batch detected..." button */
+    div[data-testid="stButton"] > button[kind="secondary"] {
+        background-color: #007BFF !important; /* Blue background */
         color: white !important; /* White text */
-        border-color: #FF4B4B !important; /* Red border */
+        border-color: #007BFF !important; /* Blue border */
     }
 
-    /* Pulsating animation */
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
+    /* Subtle strobe effect for the file uploader container */
+    .strobe-background {
+        animation: subtle-strobe 2s infinite alternate; /* Adjust timing and style as needed */
+        padding: 10px; /* Add some padding so the background is visible */
+        border-radius: 5px; /* Optional: add rounded corners */
     }
 
-    /* Apply animation to the upload text */
-    .pulsating-text {
-        animation: pulse 1.5s infinite;
-    }
-
-    /* Stop animation */
-    .no-animation {
-        animation: none;
+    @keyframes subtle-strobe {
+        0% { background-color: #f0f0f0; } /* Light grey */
+        100% { background-color: #e0e0e0; } /* Slightly darker grey */
     }
     </style>
 """, unsafe_allow_html=True)
@@ -411,7 +406,7 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
         if position == 'top':
             # Draw the separating line using draw.line
             line_start = (main_border, main_border + actual_swatch_size_px)
-            line_end = (main_border + img_w, main_border + actual_swatch_size_px)
+            line_end = (main_border + img_w, main_border + img_w + actual_swatch_size_px) # Corrected end coordinate
             draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_separator_thickness_px)
         elif position == 'bottom':
              # Draw the separating line using draw.line
@@ -437,10 +432,11 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    # Apply animation class based on session state
-    upload_text_class = "pulsating-text" if not st.session_state.full_batch_button_clicked else "no-animation"
-    st.markdown(f'<div class="{upload_text_class}">Upload Images</div>', unsafe_allow_html=True)
+    # Revert to standard subheader
+    st.subheader("Upload Images")
 
+    # Apply strobe background class to the file uploader container
+    st.markdown('<div class="strobe-background">', unsafe_allow_html=True)
     allowed_types = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif"]
     uploaded_files = st.file_uploader(
         "Choose images",
@@ -448,6 +444,8 @@ with col1:
         type=allowed_types,
         key="file_uploader" # Added a key
     )
+    st.markdown('</div>', unsafe_allow_html=True) # Close the div
+
 
     # Filter out files with unsupported extensions after upload
     valid_files_after_upload = []
@@ -847,7 +845,8 @@ if uploaded_files and positions:
                  mime="application/zip",
                  use_container_width=True,
                  key="download_zip_disabled",
-                 disabled=True # Keep disabled
+                 disabled=True, # Keep disabled
+                 help="ZIP download will be available after the full batch generation." # Tooltip added
              )
 
 
@@ -882,5 +881,6 @@ else:
              mime="application/zip",
              use_container_width=True,
              key="download_zip_disabled_initial",
-             disabled=True # Keep disabled
+             disabled=True, # Keep disabled
+             help="ZIP download will be available after the full batch generation." # Tooltip added
          )
