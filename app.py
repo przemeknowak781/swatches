@@ -42,6 +42,8 @@ download_buttons_container = st.container()
 preloader_and_status_container = st.empty()
 # Container for the "Generate Full Batch" button
 generate_full_batch_button_container = st.empty()
+# Container for displaying image resize messages
+resize_message_container = st.empty()
 
 
 # --- CSS for responsive columns and general styling ---
@@ -406,7 +408,7 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
         if position == 'top':
             # Draw the separating line using draw.line
             line_start = (main_border, main_border + actual_swatch_size_px)
-            line_end = (main_border + img_w, main_border + img_w + actual_swatch_size_px) # Corrected end coordinate
+            line_end = (main_border + img_w, main_border + actual_swatch_size_px) # Corrected end coordinate
             draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_separator_thickness_px)
         elif position == 'bottom':
              # Draw the separating line using draw.line
@@ -559,6 +561,8 @@ if st.session_state.current_settings_hash is not None and st.session_state.curre
     st.session_state.total_generations_at_start = 0 # Reset total count
     st.session_state.full_batch_button_clicked = False # Reset button clicked state
     generate_full_batch_button_container.empty() # Clear the button if settings change
+    resize_message_container.empty() # Clear resize messages on settings change
+
 
 st.session_state.current_settings_hash = current_settings_hash # Update the stored hash
 
@@ -604,6 +608,7 @@ if uploaded_files and positions:
         # preview_display_area = preview_container.empty() # Removed - initialized above
         download_buttons_container.empty()
         generate_full_batch_button_container.empty() # Clear button if it was there
+        resize_message_container.empty() # Clear previous resize messages
 
 
         # --- Generation Loop ---
@@ -640,6 +645,28 @@ if uploaded_files and positions:
                         """, unsafe_allow_html=True)
                         continue # Skip this file
 
+                    # --- Image Resizing Logic ---
+                    original_width, original_height = image.size
+                    max_dimension = 2000
+                    resized = False
+
+                    if original_width > max_dimension or original_height > max_dimension:
+                        resized = True
+                        if original_width > original_height:
+                            new_width = max_dimension
+                            new_height = int(original_height * (max_dimension / original_width))
+                        else:
+                            new_height = max_dimension
+                            new_width = int(original_width * (max_dimension / original_height))
+
+                        # Ensure dimensions are at least 1 pixel
+                        new_width = max(1, new_width)
+                        new_height = max(1, new_height)
+
+                        image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                        resize_message_container.info(f"Image '{file_name}' resized from {original_width}x{original_height} to {new_width}x{new_height}.")
+
+
                     # Convert image to RGB if it's not, to ensure compatibility with color drawing
                     if image.mode not in ("RGB", "L"):
                          image = image.convert("RGB")
@@ -664,7 +691,7 @@ if uploaded_files and positions:
                                 border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
                             )
 
-                            # Apply scaling if selected
+                            # Apply scaling if selected (this is separate from the initial resize)
                             if resize_option == "Scale (%)" and scale_percent != 100:
                                 new_w = int(result_img.width * scale_percent / 100)
                                 new_h = int(result_img.height * scale_percent / 100)
@@ -860,6 +887,7 @@ else:
     st.session_state.total_generations_at_start = 0
     st.session_state.full_batch_button_clicked = False # Reset button clicked state
     generate_full_batch_button_container.empty() # Clear the button
+    resize_message_container.empty() # Clear resize messages
 
     preview_container.empty()
     download_buttons_container.empty()
