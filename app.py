@@ -95,7 +95,7 @@ with col1:
     st.subheader("Upload Images")
     uploaded_files = st.file_uploader(
         "Upload images",
-        type=["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff"],
+        type=["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff"],  # ✅ no dots
         accept_multiple_files=True
     )
 
@@ -166,7 +166,6 @@ if uploaded_files and positions:
                         border_color, swatch_border_color, swatch_size, remove_adjacent_border
                     )
 
-                    # Resize the image before saving
                     if resize_option == "Scale (%)":
                         new_w = int(result_img.width * scale_percent / 100)
                         new_h = int(result_img.height * scale_percent / 100)
@@ -177,7 +176,6 @@ if uploaded_files and positions:
                     result_img.save(img_byte_arr, format=img_format)
                     zipf.writestr(name, img_byte_arr.getvalue())
 
-                    # Create preview image (always PNG)
                     preview_img = result_img.copy()
                     with io.BytesIO() as buffer:
                         preview_img.save(buffer, format="PNG")
