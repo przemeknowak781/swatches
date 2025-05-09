@@ -175,39 +175,32 @@ if uploaded_files and positions:
         preview_html_blocks = []
 
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
+            preview_html_blocks = []
+            preview_container.markdown("### Preview")
+            preview_container.markdown("<div id='preview-zone' style='display: flex; overflow-x: auto; gap: 30px; padding: 20px;'>", unsafe_allow_html=True)
+
             for uploaded_file in uploaded_files:
                 try:
-                    try:
-                        test_image = Image.open(uploaded_file)
-                        test_image.verify()
-                        uploaded_file.seek(0)
-                        image = Image.open(uploaded_file)
-                    except Exception as api_error:
-                        st.warning(f"⚠️ `{uploaded_file.name}` could not be loaded due to API error. Skipped.")
-                        continue
+                    test_image = Image.open(uploaded_file)
+                    test_image.verify()
+                    uploaded_file.seek(0)
+                    image = Image.open(uploaded_file)
+                except Exception:
+                    st.warning(f"⚠️ `{uploaded_file.name}` could not be loaded. Skipped.")
+                    continue
 
-                    # --- Additional safety check ---
+                try:
                     w, h = image.size
-                    if w < 100 or h < 100:
-                        st.warning(f"⚠️ `{uploaded_file.name}` has too small resolution ({w}x{h}). Skipped.")
-                        continue
-                    if w > 10000 or h > 10000:
-                        st.warning(f"⚠️ `{uploaded_file.name}` has unusually large resolution ({w}x{h}). Skipped.")
+                    if w < 100 or h < 100 or w > 10000 or h > 10000:
+                        st.warning(f"⚠️ `{uploaded_file.name}` has unsupported resolution ({w}x{h}). Skipped.")
                         continue
 
                     image = image.convert("RGB")
-                except UnidentifiedImageError:
-                    st.warning(f"⚠️ `{uploaded_file.name}` is not a valid image file. Skipped.")
-                    continue
-                except (UnidentifiedImageError, OSError, ValueError, RuntimeError) as e:
-                    st.warning(f"⚠️ `{uploaded_file.name}` could not be processed due to a read error. Skipped.")
+                    palette = extract_palette(image, num_colors, quantize_method=quantize_method)
+                except Exception:
+                    st.warning(f"⚠️ `{uploaded_file.name}` could not be processed. Skipped.")
                     continue
 
-                try:
-                    palette = extract_palette(image, num_colors, quantize_method=quantize_method)
-                except Exception as e:
-                    st.warning(f"⚠️ `{uploaded_file.name}` could not be processed for swatches. Skipped.")
-                    continue
                 border_px = int(image.width * (border_thickness / 100))
 
                 for pos in positions:
@@ -235,7 +228,7 @@ if uploaded_files and positions:
                     html_block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
                     html_block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
                     html_block += "</div>"
-                    preview_html_blocks.append(html_block)
+                    preview_container.markdown(html_block, unsafe_allow_html=True)
 
         zip_buffer.seek(0)
 
