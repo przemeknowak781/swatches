@@ -75,7 +75,7 @@ border_thickness = st.slider("Border thickness (in % of image width)", min_value
 if uploaded_files and positions:
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
-        preview_imgs = []
+        preview_html_blocks = []
 
         for uploaded_file in uploaded_files:
             image = Image.open(uploaded_file).convert("RGB")
@@ -89,7 +89,19 @@ if uploaded_files and positions:
                 result_img.save(img_byte_arr, format='JPEG', quality=95)
                 zipf.writestr(name, img_byte_arr.getvalue())
 
-                preview_imgs.append((name, result_img))
+                # Generate preview thumbnail
+                result_img.thumbnail((200, 200))
+                with io.BytesIO() as buffer:
+                    result_img.save(buffer, format="PNG")
+                    img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+                block = f"""
+                    <div style='flex: 0 0 auto; text-align: center; width: 200px;'>
+                        <div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>
+                        <img src='data:image/png;base64,{img_base64}' width='200'>
+                    </div>
+                """
+                preview_html_blocks.append(block)
 
     zip_buffer.seek(0)
     st.download_button(
@@ -100,23 +112,9 @@ if uploaded_files and positions:
     )
 
     st.markdown("### Preview")
-    container_id = "preview-container"
-    st.markdown(f"""
-        <div id='{container_id}' style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>
-    """, unsafe_allow_html=True)
-
-    for name, img in preview_imgs:
-        img_resized = img.copy()
-        img_resized.thumbnail((200, 200))
-        with io.BytesIO() as buffer:
-            img_resized.save(buffer, format="PNG")
-            img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-        st.markdown(f"""
-            <div style='flex: 0 0 auto; text-align: center; width: 200px;'>
-                <div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>
-                <img src='data:image/png;base64,{img_base64}' width='200'>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    full_html = """
+        <div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>
+    """ + "\n".join(preview_html_blocks) + """
+        </div>
+    """
+    st.markdown(full_html, unsafe_allow_html=True)
