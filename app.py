@@ -767,7 +767,7 @@ if uploaded_files and positions:
 
                         except Exception as e_layout:
                             st.error(f"Error creating layout for {file_name} (pos: {pos}): {e_layout}")
-                            current_processing_count += 1 # Increment count even if layout creation fails
+                            current_processing_count += len(layouts_to_process) # Increment count even if layout creation fails
                             # Update preloader text with progress
                             preloader_and_status_container.markdown(f"""
                                 <div class='preloader-area'>
@@ -795,7 +795,8 @@ if uploaded_files and positions:
                     continue # Skip to the next file
 
                 except Exception as e:
-                    st.error(f"Error processing `{file_name}`: {e}. Skipped.")
+                    # Catch any other general exceptions during file processing
+                    st.error(f"An unexpected error occurred while processing `{file_name}`: {e}. Skipped.")
                     current_processing_count += len(layouts_to_process) # Increment count for skipped file
                     # Update preloader text for progress
                     preloader_and_status_container.markdown(f"""
