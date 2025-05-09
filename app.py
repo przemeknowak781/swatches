@@ -31,12 +31,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Color Extraction ---
-def extract_palette(image, num_colors=6):
-    img = image.convert('RGB')
-    data = np.array(img).reshape((-1, 3))
-    unique_colors, counts = np.unique(data, axis=0, return_counts=True)
-    top_colors = unique_colors[np.argsort(-counts)][:num_colors]
-    return top_colors
+def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
+    img = image.convert("RGB")
+    img = img.resize((300, 300))  # optional downscale for performance
+
+    # Use Pillow's quantize to reduce image to a palette
+    paletted = img.quantize(colors=num_colors, method=quantize_method)
+    palette = paletted.getpalette()[:num_colors * 3]  # RGB triplets
+    colors = [tuple(palette[i:i+3]) for i in range(0, len(palette), 3)]
+    return colors
 
 # --- Draw Layout Function ---
 def draw_layout(image, colors, position, border_thickness, swatch_border_thickness, border_color, swatch_border_color, swatch_size, remove_adjacent_border):
@@ -146,6 +149,14 @@ with col2:
         if st.toggle("Right", key="pos_right"):
             positions.append("right")
 
+    quant_method_label = st.selectbox("Palette extraction method", ["MEDIANCUT", "MAXCOVERAGE", "FASTOCTREE"], index=0)
+    quant_method_map = {
+        "MEDIANCUT": Image.MEDIANCUT,
+        "MAXCOVERAGE": Image.MAXCOVERAGE,
+        "FASTOCTREE": Image.FASTOCTREE
+    }
+    quantize_method = quant_method_map[quant_method_label]
+
     num_colors = st.slider("Number of swatches", 2, 12, 6)
     swatch_size = st.slider("Swatch size (px)", 20, 200, 100)
 
@@ -193,7 +204,7 @@ if uploaded_files and positions:
                     continue
 
                 try:
-                    palette = extract_palette(image, num_colors)
+                    palette = extract_palette(image, num_colors, quantize
                 except Exception as e:
                     st.warning(f"⚠️ `{uploaded_file.name}` could not be processed for swatches. Skipped.")
                     continue
