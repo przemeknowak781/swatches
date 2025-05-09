@@ -70,14 +70,14 @@ st.markdown("""
         border-radius: 4px; /* Adjusted image border radius */
         margin-bottom: 8px; /* Space below the image */
         object-fit: contain; /* Scale image to fit container while maintaining aspect ratio */
-        max-height: 180px; /* Limit image height to keep preview items consistent */
+        max_height: 180px; /* Limit image height to keep preview items consistent */
     }
 
     .preview-item-name {
-        font-size: 12px;
+        font_size: 12px;
         margin-bottom: 5px;
         color: #333;
-        word-break: break-all; /* Break long filenames */
+        word-break: break_all; /* Break long filenames */
         height: 30px; /* Give it a fixed height to prevent layout shifts */
         overflow: hidden;
         width: 100%; /* Ensure name takes full width */
@@ -87,7 +87,7 @@ st.markdown("""
 
     /* Style for the new download link */
     .download-link {
-        font-size: 10px;
+        font_size: 10px;
         color: #888; /* Gray color */
         text-decoration: none; /* Remove underline */
         margin-top: 5px; /* Space above the link */
@@ -95,7 +95,7 @@ st.markdown("""
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 100%; /* Ensure it respects the parent width */
+        max_width: 100%; /* Ensure it respects the parent width */
         display: block; /* Ensure text-overflow works */
     }
 
@@ -117,16 +117,16 @@ st.markdown("""
     /* CSS for the animated preloader and text */
     .preloader-area {
         display: flex;
-        align-items: center;
-        justify-content: center; /* Center the content */
+        align_items: center;
+        justify_content: center; /* Center the content */
         margin: 20px auto; /* Center the container */
-        min-height: 40px; /* Ensure it has some height */
+        min_height: 40px; /* Ensure it has some height */
     }
 
     .preloader {
         border: 4px solid #f3f3f3; /* Light grey */
-        border-top: 4px solid #3498db; /* Blue */
-        border-radius: 50%;
+        border_top: 4px solid #3498db; /* Blue */
+        border_radius: 50%;
         width: 30px;
         height: 30px;
         animation: spin 1s linear infinite;
@@ -134,7 +134,7 @@ st.markdown("""
     }
 
     .preloader-text {
-        font-size: 16px;
+        font_size: 16px;
         color: #555;
     }
 
@@ -195,16 +195,13 @@ def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
 
 # --- Draw Layout Function ---
 
-def draw_layout(image, colors, position, all_border_thickness_px,
+def draw_layout(image, colors, position, image_border_thickness_px, swatch_separator_thickness_px,
                 border_color, swatch_border_color, swatch_size_percent, remove_adjacent_border):
-    """Draws the image layout with color swatches using a single pixel border thickness."""
+    """Draws the image layout with color swatches using separate border thickness values."""
 
     img_w, img_h = image.size
-    # Use the single slider value for all border thicknesses
-    main_border = all_border_thickness_px
-    # Swatch borders and the separating line are half the main border thickness
-    swatch_border_thickness_px = all_border_thickness_px // 2
-    separating_line_thickness = all_border_thickness_px // 2
+    main_border = image_border_thickness_px
+    swatch_border_thickness_px = swatch_separator_thickness_px // 2 # Swatch internal borders are half the separator thickness
 
 
     # Calculate actual swatch size in pixels based on percentage
@@ -242,7 +239,7 @@ def draw_layout(image, colors, position, all_border_thickness_px,
     # Determine canvas size and image paste position based on swatch position
     # Canvas size needs to accommodate image, swatches, main borders, and the separating line thickness
     if position == 'top':
-        canvas_h = img_h + actual_swatch_size_px + 2 * main_border + separating_line_thickness
+        canvas_h = img_h + actual_swatch_size_px + 2 * main_border + swatch_separator_thickness_px
         canvas_w = img_w + 2 * main_border
         swatch_y = main_border
         swatch_x_start = main_border
@@ -252,12 +249,12 @@ def draw_layout(image, colors, position, all_border_thickness_px,
             extra_width_for_last_swatch = swatch_total_width % len(colors)
         else:
             swatch_width = swatch_total_width # Should not happen if colors is not empty
-        image_paste_y = main_border + actual_swatch_size_px + separating_line_thickness
+        image_paste_y = main_border + actual_swatch_size_px + swatch_separator_thickness_px
 
     elif position == 'bottom':
-        canvas_h = img_h + actual_swatch_size_px + 2 * main_border + separating_line_thickness
+        canvas_h = img_h + actual_swatch_size_px + 2 * main_border + swatch_separator_thickness_px
         canvas_w = img_w + 2 * main_border
-        swatch_y = main_border + img_h + separating_line_thickness
+        swatch_y = main_border + img_h + swatch_separator_thickness_px
         swatch_x_start = main_border
         swatch_total_width = img_w
         if len(colors) > 0:
@@ -268,7 +265,7 @@ def draw_layout(image, colors, position, all_border_thickness_px,
         image_paste_y = main_border
 
     elif position == 'left':
-        canvas_w = img_w + actual_swatch_size_px + 2 * main_border + separating_line_thickness
+        canvas_w = img_w + actual_swatch_size_px + 2 * main_border + swatch_separator_thickness_px
         canvas_h = img_h + 2 * main_border
         swatch_x = main_border
         swatch_y_start = main_border
@@ -278,12 +275,12 @@ def draw_layout(image, colors, position, all_border_thickness_px,
             extra_height_for_last_swatch = swatch_total_height % len(colors)
         else:
             swatch_height = swatch_total_height
-        image_paste_x = main_border + actual_swatch_size_px + separating_line_thickness
+        image_paste_x = main_border + actual_swatch_size_px + swatch_separator_thickness_px
 
     elif position == 'right':
-        canvas_w = img_w + actual_swatch_size_px + 2 * main_border + separating_line_thickness
+        canvas_w = img_w + actual_swatch_size_px + 2 * main_border + swatch_separator_thickness_px
         canvas_h = img_h + 2 * main_border
-        swatch_x = main_border + img_w + separating_line_thickness
+        swatch_x = main_border + img_w + swatch_separator_thickness_px
         swatch_y_start = main_border
         swatch_total_height = img_h
         if len(colors) > 0:
@@ -383,28 +380,28 @@ def draw_layout(image, colors, position, all_border_thickness_px,
 
 
     # --- Draw Border Between Swatch Area and Image (with swatch border color and swatch border thickness) ---
-    # This border is always drawn with the swatch_border_thickness_px // 2 and swatch_border_color
-    if swatch_border_thickness_px > 0: # Only draw if swatch border is present
+    # This border is always drawn with the swatch_separator_thickness_px and swatch_border_color
+    if swatch_separator_thickness_px > 0: # Only draw if swatch separator is present
         if position == 'top':
             # Draw the separating line using draw.line
             line_start = (main_border, main_border + actual_swatch_size_px)
             line_end = (main_border + img_w, main_border + actual_swatch_size_px)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_separator_thickness_px)
         elif position == 'bottom':
              # Draw the separating line using draw.line
             line_start = (main_border, main_border + img_h)
             line_end = (main_border + img_w, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_separator_thickness_px)
         elif position == 'left':
              # Draw the separating line using draw.line
             line_start = (main_border + actual_swatch_size_px, main_border)
             line_end = (main_border + actual_swatch_size_px, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_separator_thickness_px)
         elif position == 'right':
              # Draw the separating line using draw.line
             line_start = (main_border + img_w, main_border)
             line_end = (main_border + img_w, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_separator_thickness_px)
 
 
     return canvas
@@ -492,8 +489,9 @@ with col2:
 with col3:
     st.subheader("Borders")
 
-    # Single slider for all border thicknesses in pixels
-    all_border_thickness_px_val = st.slider("All Border Thickness (px)", 0, 200, 0, key="all_border_thickness_px")
+    # Separate sliders for image border and swatch separators
+    image_border_thickness_px_val = st.slider("Image Border Thickness (px)", 0, 200, 0, key="image_border_thickness_px")
+    swatch_separator_thickness_px_val = st.slider("Swatch Separator Thickness (px)", 0, 200, 0, key="swatch_separator_thickness_px", help="Thickness of lines separating swatches and the swatch-image separator.")
 
     border_color = st.color_picker("Main Border Color", "#FFFFFF", key="border_color")
     swatch_border_color = st.color_picker("Swatch Border Color", "#FFFFFF", key="swatch_border_color") # Default color changed to white
@@ -561,11 +559,12 @@ if uploaded_files and positions:
                     # st.warning(f"Failed to extract palette for `{file_name}`. Skipping swatches.") # Less verbose
                     pass # Continue even if palette extraction fails
 
-                # Pass the single pixel thickness value
+                # Pass the new separate thickness values
                 for pos_idx, pos in enumerate(positions):
                     try:
                         result_img = draw_layout(
-                            image.copy(), palette, pos, all_border_thickness_px_val,
+                            image.copy(), palette, pos,
+                            image_border_thickness_px_val, swatch_separator_thickness_px_val,
                             border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
                         )
 
