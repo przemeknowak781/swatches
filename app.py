@@ -7,10 +7,6 @@ import zipfile
 import os
 import base64
 
-# SETTINGS
-NUM_COLORS = 6
-SWATCH_THICKNESS = 100
-
 # Function to extract dominant colors
 def extract_palette(image, num_colors=6):
     img = image.convert('RGB')
@@ -19,37 +15,37 @@ def extract_palette(image, num_colors=6):
     return kmeans.cluster_centers_.astype(int)
 
 # Drawing function
-def draw_layout(image, colors, position, border_thickness, swatch_border_thickness, border_color, swatch_border_color):
+def draw_layout(image, colors, position, border_thickness, swatch_border_thickness, border_color, swatch_border_color, swatch_size):
     img_w, img_h = image.size
     border = border_thickness
 
     if position in ['top', 'bottom']:
-        canvas = Image.new("RGB", (img_w + 2*border, img_h + SWATCH_THICKNESS + 2*border), border_color)
+        canvas = Image.new("RGB", (img_w + 2*border, img_h + swatch_size + 2*border), border_color)
     else:
-        canvas = Image.new("RGB", (img_w + SWATCH_THICKNESS + 2*border, img_h + 2*border), border_color)
+        canvas = Image.new("RGB", (img_w + swatch_size + 2*border, img_h + 2*border), border_color)
 
     if position == 'top':
-        canvas.paste(image, (border, SWATCH_THICKNESS + border))
-        swatch_area = (border, border, img_w + border, SWATCH_THICKNESS + border)
+        canvas.paste(image, (border, swatch_size + border))
+        swatch_area = (border, border, img_w + border, swatch_size + border)
     elif position == 'bottom':
         canvas.paste(image, (border, border))
-        swatch_area = (border, img_h + border, img_w + border, img_h + SWATCH_THICKNESS + border)
+        swatch_area = (border, img_h + border, img_w + border, img_h + swatch_size + border)
     elif position == 'left':
-        canvas.paste(image, (SWATCH_THICKNESS + border, border))
-        swatch_area = (border, border, SWATCH_THICKNESS + border, img_h + border)
+        canvas.paste(image, (swatch_size + border, border))
+        swatch_area = (border, border, swatch_size + border, img_h + border)
     elif position == 'right':
         canvas.paste(image, (border, border))
-        swatch_area = (img_w + border, border, img_w + SWATCH_THICKNESS + border, img_h + border)
+        swatch_area = (img_w + border, border, img_w + swatch_size + border, img_h + border)
 
     draw = ImageDraw.Draw(canvas)
     if position in ['top', 'bottom']:
-        swatch_width = image.width // NUM_COLORS
+        swatch_width = image.width // len(colors)
         for i, color in enumerate(colors):
             x0 = swatch_area[0] + i * swatch_width
             draw.rectangle([x0, swatch_area[1], x0 + swatch_width, swatch_area[3]], fill=tuple(color))
             draw.rectangle([x0, swatch_area[1], x0 + swatch_width, swatch_area[3]], outline=swatch_border_color, width=swatch_border_thickness)
     else:
-        swatch_height = image.height // NUM_COLORS
+        swatch_height = image.height // len(colors)
         for i, color in enumerate(colors):
             y0 = swatch_area[1] + i * swatch_height
             draw.rectangle([swatch_area[0], y0, swatch_area[2], y0 + swatch_height], fill=tuple(color))
@@ -69,6 +65,8 @@ positions = st.multiselect(
     default=["bottom"]
 )
 
+num_colors = st.slider("Number of swatches (dominant colors)", min_value=2, max_value=12, value=6)
+swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
 border_thickness = st.slider("Border thickness (in % of image width)", min_value=1, max_value=10, value=2)
 swatch_border_thickness = st.slider("Swatch border thickness (in px)", min_value=0, max_value=10, value=1)
 border_color = st.color_picker("Image border color", value="#FFFFFF")
@@ -81,11 +79,11 @@ if uploaded_files and positions:
 
         for uploaded_file in uploaded_files:
             image = Image.open(uploaded_file).convert("RGB")
-            palette = extract_palette(image, NUM_COLORS)
+            palette = extract_palette(image, num_colors)
             border_px = int(image.width * (border_thickness / 100))
 
             for pos in positions:
-                result_img = draw_layout(image, palette, pos, border_px, swatch_border_thickness, border_color, swatch_border_color)
+                result_img = draw_layout(image, palette, pos, border_px, swatch_border_thickness, border_color, swatch_border_color, swatch_size)
                 img_byte_arr = io.BytesIO()
                 name = f"{uploaded_file.name.rsplit('.', 1)[0]}_{pos}.jpg"
                 result_img.save(img_byte_arr, format='JPEG', quality=95)
