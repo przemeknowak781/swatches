@@ -1,7 +1,6 @@
 import streamlit as st
 from PIL import Image, ImageDraw, UnidentifiedImageError
 import numpy as np
-from sklearn.cluster import KMeans
 import io
 import zipfile
 import base64
@@ -35,17 +34,9 @@ st.markdown("""
 def extract_palette(image, num_colors=6):
     img = image.convert('RGB')
     data = np.array(img).reshape((-1, 3))
-
-    unique_colors = np.unique(data, axis=0)
-    if len(unique_colors) < num_colors:
-        st.warning("⚠️ Image contains too few distinct colors for clustering. Skipped.")
-        raise ValueError("Too few unique colors")
-
-    if data.shape[0] > 1_000_000:
-        data = data[np.random.choice(data.shape[0], 1_000_000, replace=False)]
-
-    kmeans = KMeans(n_clusters=num_colors, random_state=42, n_init='auto').fit(data)
-    return kmeans.cluster_centers_.astype(int)
+    unique_colors, counts = np.unique(data, axis=0, return_counts=True)
+    top_colors = unique_colors[np.argsort(-counts)][:num_colors]
+    return top_colors
 
 # --- Draw Layout Function ---
 def draw_layout(image, colors, position, border_thickness, swatch_border_thickness, border_color, swatch_border_color, swatch_size, remove_adjacent_border):
