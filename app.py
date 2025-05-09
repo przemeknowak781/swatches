@@ -1,10 +1,17 @@
 import streamlit as st
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, UnidentifiedImageError
 import numpy as np
 from sklearn.cluster import KMeans
 import io
 import zipfile
 import base64
+
+# --- Reset / Clear State Button ---
+if st.button("🔄 Reset app state"):
+    st.cache_data.clear()
+    st.cache_resource.clear()
+    st.session_state.clear()
+    st.experimental_rerun()
 
 # --- Page Setup ---
 st.set_page_config(layout="wide")
@@ -93,9 +100,10 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.subheader("Upload Images")
+    allowed_types = [ext.strip(".") for ext in ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif"]]
     uploaded_files = st.file_uploader(
         "Upload images",
-        type=["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif"],
+        type=allowed_types,
         accept_multiple_files=True
     )
 
@@ -153,6 +161,9 @@ if uploaded_files and positions:
             for uploaded_file in uploaded_files:
                 try:
                     image = Image.open(uploaded_file).convert("RGB")
+                except UnidentifiedImageError:
+                    st.warning(f"⚠️ `{uploaded_file.name}` is not a valid image file. Skipped.")
+                    continue
                 except Exception as e:
                     st.error(f"❌ Failed to open `{uploaded_file.name}`: {str(e)}")
                     continue
