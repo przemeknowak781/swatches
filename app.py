@@ -15,6 +15,7 @@ def extract_palette(image, num_colors=6):
     return kmeans.cluster_centers_.astype(int)
 
 # Drawing function
+
 def draw_layout(image, colors, position, border_thickness, swatch_border_thickness, border_color, swatch_border_color, swatch_size):
     img_w, img_h = image.size
     border = border_thickness
@@ -24,37 +25,37 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
     else:
         canvas = Image.new("RGB", (img_w + swatch_size + 2*border, img_h + 2*border), border_color)
 
-    # Draw image
+    # Paste image
     if position == 'top':
         canvas.paste(image, (border, swatch_size + border))
+        y_offset = border + swatch_border_thickness  # swatches aligned at bottom
     elif position == 'bottom':
         canvas.paste(image, (border, border))
+        y_offset = border + img_h - swatch_size - swatch_border_thickness
     elif position == 'left':
         canvas.paste(image, (swatch_size + border, border))
+        x_offset = border + swatch_border_thickness
     elif position == 'right':
         canvas.paste(image, (border, border))
+        x_offset = border + img_w - swatch_size - swatch_border_thickness
 
     draw = ImageDraw.Draw(canvas)
     if position in ['top', 'bottom']:
         swatch_width = image.width // len(colors)
-        x_offset = border
-        y_offset = border if position == 'top' else border + img_h - swatch_size
         for i, color in enumerate(colors):
-            x0 = x_offset + i * swatch_width
+            x0 = border + i * swatch_width + swatch_border_thickness
+            x1 = border + (i + 1) * swatch_width - swatch_border_thickness
             y0 = y_offset
-            x1 = x0 + swatch_width
             y1 = y0 + swatch_size
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
             draw.rectangle([x0, y0, x1, y1], outline=swatch_border_color, width=swatch_border_thickness)
     else:
         swatch_height = image.height // len(colors)
-        x_offset = border if position == 'left' else border + img_w - swatch_size
-        y_offset = border
         for i, color in enumerate(colors):
+            y0 = border + i * swatch_height + swatch_border_thickness
+            y1 = border + (i + 1) * swatch_height - swatch_border_thickness
             x0 = x_offset
-            y0 = y_offset + i * swatch_height
             x1 = x0 + swatch_size
-            y1 = y0 + swatch_height
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
             draw.rectangle([x0, y0, x1, y1], outline=swatch_border_color, width=swatch_border_thickness)
 
