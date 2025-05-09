@@ -109,17 +109,22 @@ with col1:
     uploaded_files = st.file_uploader("Upload images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
 with col2:
-    st.subheader("Layout Settings")
-    positions = st.multiselect("Swatch position(s)", ["top", "bottom", "left", "right"], default=["bottom"])
-    num_colors = st.slider("Number of swatches", min_value=2, max_value=12, value=6)
-    swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
+    with st.container():
+        st.subheader("Layout Settings")
+        positions = st.multiselect("Swatch position(s)", ["top", "bottom", "left", "right"], default=["bottom"])
+        num_colors = st.slider("Number of swatches", min_value=2, max_value=12, value=6)
+        swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
 
-    st.subheader("Borders")
-    border_thickness = st.slider("Image border thickness (% of image width)", min_value=0, max_value=10, value=0)
-    border_color = st.color_picker("Image border color", value="#FFFFFF")
-    swatch_border_thickness = st.slider("Swatch border thickness (px)", min_value=0, max_value=50, value=5)
-    swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
-    remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
+    with st.container():
+        st.subheader("Image Border")
+        border_thickness = st.slider("Image border thickness (% of image width)", min_value=0, max_value=10, value=0)
+        border_color = st.color_picker("Image border color", value="#FFFFFF")
+
+    with st.container():
+        st.subheader("Swatch Borders")
+        swatch_border_thickness = st.slider("Swatch border thickness (px)", min_value=0, max_value=50, value=5)
+        swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
+        remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
 
 if uploaded_files and positions:
     zip_buffer = io.BytesIO()
