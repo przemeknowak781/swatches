@@ -127,15 +127,8 @@ with col2:
     positions = st.multiselect(
     "Swatch position(s):",
     options=["top", "bottom", "left", "right"],
-    default=["bottom"],
-    key="position_buttons",
-    label_visibility="visible")        positions.append("top")
-    if st.checkbox("Bottom", value=True, key="bottom_pos"):
-        positions.append("bottom")
-    if st.checkbox("Left", value=False, key="left_pos"):
-        positions.append("left")
-    if st.checkbox("Right", value=False, key="right_pos"):
-        positions.append("right")
+    default=["bottom"]
+)
     num_colors = st.slider("Number of swatches", min_value=2, max_value=12, value=6)
     swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
 
