@@ -96,7 +96,7 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.subheader("Upload Images")
-    allowed_types = [ext.strip(".") for ext in ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif"]]
+    allowed_types = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif"]
     uploaded_files = st.file_uploader(
         "Upload images",
         type=allowed_types,
