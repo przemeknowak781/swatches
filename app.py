@@ -428,7 +428,7 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
         if position == 'top':
             # Draw the separating line using draw.line
             line_start = (main_border, main_border + actual_swatch_size_px)
-            line_end = (main_border + img_w, main_border + actual_swatch_size_px) # Corrected end coordinate
+            line_end = (main_border + img_w, main_border + img_w + actual_swatch_size_px) # Corrected end coordinate
             draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_separator_thickness_px)
         elif position == 'bottom':
              # Draw the separating line using draw.line
@@ -627,7 +627,7 @@ try:
 
         # Always render the preview container structure once files and positions are selected
         # This prevents collapse during slider adjustments
-        preview_display_area = preview_container.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
+        preview_container.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
 
         # Determine which images/layouts to generate based on the stage
         images_to_process = []
@@ -896,7 +896,8 @@ try:
              )
         else:
              # If no preview parts, ensure the container is still rendered with min-height
-             preview_container.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
+             # This is handled by the initial rendering of preview_container.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
+             pass
 
 
         # Display the "Generate Full Batch" button if in preview stage
