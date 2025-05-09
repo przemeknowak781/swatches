@@ -124,10 +124,12 @@ with col1:
 
 with col2:
     st.subheader("Layout Settings")
-    positions = []
-    st.write("Swatch position(s):")
-    if st.checkbox("Top", value=False, key="top_pos"):
-        positions.append("top")
+    positions = st.multiselect(
+    "Swatch position(s):",
+    options=["top", "bottom", "left", "right"],
+    default=["bottom"],
+    key="position_buttons",
+    label_visibility="visible")        positions.append("top")
     if st.checkbox("Bottom", value=True, key="bottom_pos"):
         positions.append("bottom")
     if st.checkbox("Left", value=False, key="left_pos"):
