@@ -164,7 +164,18 @@ if uploaded_files and positions:
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
             for uploaded_file in uploaded_files:
                 try:
-                    image = Image.open(uploaded_file).convert("RGB")
+                    image = Image.open(uploaded_file)
+
+                    # --- Additional safety check ---
+                    w, h = image.size
+                    if w < 100 or h < 100:
+                        st.warning(f"⚠️ `{uploaded_file.name}` has too small resolution ({w}x{h}). Skipped.")
+                        continue
+                    if w > 10000 or h > 10000:
+                        st.warning(f"⚠️ `{uploaded_file.name}` has unusually large resolution ({w}x{h}). Skipped.")
+                        continue
+
+                    image = image.convert("RGB")
                 except UnidentifiedImageError:
                     st.warning(f"⚠️ `{uploaded_file.name}` is not a valid image file. Skipped.")
                     continue
