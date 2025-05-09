@@ -375,17 +375,25 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
     # This border is always drawn with the swatch_border_thickness_px and swatch_border_color
     if swatch_border_thickness_px > 0: # Only draw if swatch border is present
         if position == 'top':
-            # Draw a filled rectangle for the separating border
-            draw.rectangle([main_border, main_border + actual_swatch_size_px, main_border + img_w, main_border + actual_swatch_size_px + swatch_border_thickness_px], fill=swatch_border_color)
+            # Draw the separating line using draw.line
+            line_start = (main_border, main_border + actual_swatch_size_px + swatch_border_thickness_px // 2)
+            line_end = (main_border + img_w, main_border + actual_swatch_size_px + swatch_border_thickness_px // 2)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
         elif position == 'bottom':
-             # Draw a filled rectangle for the separating border
-            draw.rectangle([main_border, main_border + img_h, main_border + img_w, main_border + img_h + swatch_border_thickness_px], fill=swatch_border_color)
+             # Draw the separating line using draw.line
+            line_start = (main_border, main_border + img_h + swatch_border_thickness_px // 2)
+            line_end = (main_border + img_w, main_border + img_h + swatch_border_thickness_px // 2)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
         elif position == 'left':
-             # Draw a filled rectangle for the separating border
-            draw.rectangle([main_border + actual_swatch_size_px, main_border, main_border + actual_swatch_size_px + swatch_border_thickness_px, main_border + img_h], fill=swatch_border_color)
+             # Draw the separating line using draw.line
+            line_start = (main_border + actual_swatch_size_px + swatch_border_thickness_px // 2, main_border)
+            line_end = (main_border + actual_swatch_size_px + swatch_border_thickness_px // 2, main_border + img_h)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
         elif position == 'right':
-             # Draw a filled rectangle for the separating border
-            draw.rectangle([main_border + img_w, main_border, main_border + img_w + swatch_border_thickness_px, main_border + img_h], fill=swatch_border_color)
+             # Draw the separating line using draw.line
+            line_start = (main_border + img_w + swatch_border_thickness_px // 2, main_border)
+            line_end = (main_border + img_w + swatch_border_thickness_px // 2, main_border + img_h)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
 
 
     return canvas
@@ -625,9 +633,9 @@ if uploaded_files and positions:
                         preloader_and_status_container.markdown(f"""
                             <div class='preloader-area'>
                                 <div class='preloader'></div>
-                                <span class='preloader-text'>Generating in progress... {processed_files_count}/{total_files_to_process}</span>
-                            </div>
-                        """, unsafe_allow_html=True)
+                            <span class='preloader-text'>Generating in progress... {processed_files_count}/{total_files_to_process}</span>
+                        </div>
+                    """, unsafe_allow_html=True)
 
 
                     except Exception as e_layout:
