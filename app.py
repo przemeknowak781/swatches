@@ -21,6 +21,8 @@ preview_container = st.container()
 download_buttons_container = st.container()
 # Container for the animated preloader and status text
 preloader_and_status_container = st.empty()
+# Container to display uploaded file names - Defined globally
+uploaded_files_display_container = st.empty()
 
 
 # --- CSS for responsive columns and general styling ---
