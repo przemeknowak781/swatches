@@ -44,8 +44,8 @@ st.markdown("""
         padding: 20px;    /* Inner padding for the preview zone */
         border-radius: 8px;
         min-height: 250px; /* Ensure it has some height even when empty */
-        align_items: flex-start; /* Align items to the top */
-        margin_bottom: 20px; /* Space below the preview zone */
+        align-items: flex-start; /* Align items to the top */
+        margin-bottom: 20px; /* Space below the preview zone */
         background: #ffffff; /* Preview background is white */
     }
 
@@ -53,13 +53,13 @@ st.markdown("""
     .preview-item {
         flex: 0 0 auto; /* Items won't grow or shrink */
         display: flex; /* Use flexbox for internal layout */
-        flex_direction: column; /* Stack name, image, link vertically */
-        align_items: center; /* Center content horizontally */
-        text_align: center;
+        flex-direction: column; /* Stack name, image, link vertically */
+        align-items: center; /* Center content horizontally */
+        text-align: center;
         width: 220px; /* Increased width for each preview item */
-        box_shadow: 0 4px 12px rgba(0,0,0,0.15); /* Subtle shadow */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Subtle shadow */
         padding: 10px; /* Inner padding for the item */
-        border_radius: 8px;
+        border-radius: 8px;
         background: #f0f0f0; /* Preview item background is light gray */
         border: 1px solid #e0e0e0;
     }
@@ -67,68 +67,74 @@ st.markdown("""
     .preview-item img {
         width: 100%; /* Image takes full available width within .preview-item */
         height: auto;     /* Maintain aspect ratio */
-        border_radius: 4px; /* Adjusted image border radius */
-        margin_bottom: 8px; /* Space below the image */
-        object_fit: contain; /* Scale image to fit container while maintaining aspect ratio */
-        max_height: 180px; /* Limit image height to keep preview items consistent */
+        border-radius: 4px; /* Adjusted image border radius */
+        margin-bottom: 8px; /* Space below the image */
+        object-fit: contain; /* Scale image to fit container while maintaining aspect ratio */
+        max-height: 180px; /* Limit image height to keep preview items consistent */
     }
 
     .preview-item-name {
-        font_size: 12px;
-        margin_bottom: 5px;
+        font-size: 12px;
+        margin-bottom: 5px;
         color: #333;
-        word_break: break-all; /* Break long filenames */
+        word-break: break-all; /* Break long filenames */
         height: 30px; /* Give it a fixed height to prevent layout shifts */
         overflow: hidden;
         width: 100%; /* Ensure name takes full width */
-        text_overflow: ellipsis; /* Add ellipsis for long names */
-        white_space: nowrap; /* Prevent wrapping */
+        text-overflow: ellipsis; /* Add ellipsis for long names */
+        white-space: nowrap; /* Prevent wrapping */
     }
 
     /* Style for the new download link */
     .download-link {
-        font_size: 10px;
+        font-size: 10px;
         color: #888; /* Gray color */
-        text_decoration: none; /* Remove underline */
-        margin_top: 5px; /* Space above the link */
+        text-decoration: none; /* Remove underline */
+        margin-top: 5px; /* Space above the link */
+        /* Added to prevent text wrapping */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%; /* Ensure it respects the parent width */
+        display: block; /* Ensure text-overflow works */
     }
 
     .download-link:hover {
-        text_decoration: underline; /* Underline on hover */
+        text-decoration: underline; /* Underline on hover */
         color: #555;
     }
 
     /* Add some margin below subheaders for better section separation */
     h2 {
-        margin_bottom: 0.9rem !important;
+        margin-bottom: 0.9rem !important;
     }
 
     /* Ensure download buttons have some space */
     .stDownloadButton {
-        margin_top: 10px;
+        margin-top: 10px;
     }
 
     /* CSS for the animated preloader and text */
     .preloader-area {
         display: flex;
-        align_items: center;
-        justify_content: center; /* Center the content */
+        align-items: center;
+        justify-content: center; /* Center the content */
         margin: 20px auto; /* Center the container */
-        min_height: 40px; /* Ensure it has some height */
+        min-height: 40px; /* Ensure it has some height */
     }
 
     .preloader {
         border: 4px solid #f3f3f3; /* Light grey */
-        border_top: 4px solid #3498db; /* Blue */
-        border_radius: 50%;
+        border-top: 4px solid #3498db; /* Blue */
+        border-radius: 50%;
         width: 30px;
         height: 30px;
         animation: spin 1s linear infinite;
-        margin_right: 15px; /* Space between spinner and text */
+        margin-right: 15px; /* Space between spinner and text */
     }
 
     .preloader-text {
-        font_size: 16px;
+        font-size: 16px;
         color: #555;
     }
 
@@ -196,8 +202,9 @@ def draw_layout(image, colors, position, all_border_thickness_px,
     img_w, img_h = image.size
     # Use the single slider value for all border thicknesses
     main_border = all_border_thickness_px
-    swatch_border_thickness_px = all_border_thickness_px
-    separating_line_thickness = all_border_thickness_px
+    # Swatch borders and the separating line are half the main border thickness
+    swatch_border_thickness_px = all_border_thickness_px // 2
+    separating_line_thickness = all_border_thickness_px // 2
 
 
     # Calculate actual swatch size in pixels based on percentage
@@ -376,28 +383,28 @@ def draw_layout(image, colors, position, all_border_thickness_px,
 
 
     # --- Draw Border Between Swatch Area and Image (with swatch border color and swatch border thickness) ---
-    # This border is always drawn with the swatch_border_thickness_px and swatch_border_color
+    # This border is always drawn with the swatch_border_thickness_px // 2 and swatch_border_color
     if swatch_border_thickness_px > 0: # Only draw if swatch border is present
         if position == 'top':
             # Draw the separating line using draw.line
             line_start = (main_border, main_border + actual_swatch_size_px)
             line_end = (main_border + img_w, main_border + actual_swatch_size_px)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
         elif position == 'bottom':
              # Draw the separating line using draw.line
             line_start = (main_border, main_border + img_h)
             line_end = (main_border + img_w, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
         elif position == 'left':
              # Draw the separating line using draw.line
             line_start = (main_border + actual_swatch_size_px, main_border)
             line_end = (main_border + actual_swatch_size_px, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
         elif position == 'right':
              # Draw the separating line using draw.line
             line_start = (main_border + img_w, main_border)
             line_end = (main_border + img_w, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
 
 
     return canvas
