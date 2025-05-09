@@ -95,10 +95,18 @@ with col1:
     st.subheader("Upload Images")
     uploaded_files = st.file_uploader("Upload images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-    st.subheader("Download Size")
+    st.subheader("Download Options")
     resize_option = st.radio("Resize method", ["Original size", "Scale (%)"], index=0)
     if resize_option == "Scale (%)":
         scale_percent = st.slider("Scale percent", 10, 200, 100)
+
+    output_format = st.selectbox("Output format", ["JPG", "PNG", "WEBP"])
+    format_map = {
+        "JPG": ("JPEG", "jpg"),
+        "PNG": ("PNG", "png"),
+        "WEBP": ("WEBP", "webp")
+    }
+    img_format, extension = format_map[output_format]
 
 with col2:
     st.subheader("Layout Settings")
@@ -156,11 +164,11 @@ if uploaded_files and positions:
                         result_img = result_img.resize((new_w, new_h), Image.LANCZOS)
 
                     img_byte_arr = io.BytesIO()
-                    name = f"{uploaded_file.name.rsplit('.', 1)[0]}_{pos}.jpg"
-                    result_img.save(img_byte_arr, format='JPEG', quality=95)
+                    name = f"{uploaded_file.name.rsplit('.', 1)[0]}_{pos}.{extension}"
+                    result_img.save(img_byte_arr, format=img_format)
                     zipf.writestr(name, img_byte_arr.getvalue())
 
-                    # Create preview image (use resized image)
+                    # Create preview image (in PNG for compatibility)
                     preview_img = result_img.copy()
                     with io.BytesIO() as buffer:
                         preview_img.save(buffer, format="PNG")
@@ -178,4 +186,4 @@ if uploaded_files and positions:
             st.markdown("### Preview")
             full_html = "<div style='display: flex; overflow-x: auto; gap: 30px; padding: 20px;'>" + "\n".join(preview_html_blocks) + "</div>"
             st.markdown(full_html, unsafe_allow_html=True)
-            st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip", use_container_width=True)
+            st.download_button(f"📦 Download all as ZIP ({extension.upper()})", zip_buffer, file_name=f"swatches.{extension}.zip", mime="application/zip", use_container_width=True)
