@@ -44,91 +44,91 @@ st.markdown("""
         padding: 20px;    /* Inner padding for the preview zone */
         border-radius: 8px;
         min-height: 250px; /* Ensure it has some height even when empty */
-        align-items: flex-start; /* Align items to the top */
-        margin-bottom: 20px; /* Space below the preview zone */
-        background: #ffffff; /* Changed preview background to white */
+        align_items: flex-start; /* Align items to the top */
+        margin_bottom: 20px; /* Space below the preview zone */
+        background: #ffffff; /* Preview background is white */
     }
 
     /* Styles for individual preview items */
     .preview-item {
         flex: 0 0 auto; /* Items won't grow or shrink */
         display: flex; /* Use flexbox for internal layout */
-        flex-direction: column; /* Stack name, image, link vertically */
-        align-items: center; /* Center content horizontally */
-        text-align: center;
+        flex_direction: column; /* Stack name, image, link vertically */
+        align_items: center; /* Center content horizontally */
+        text_align: center;
         width: 220px; /* Increased width for each preview item */
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Subtle shadow */
+        box_shadow: 0 4px 12px rgba(0,0,0,0.15); /* Subtle shadow */
         padding: 10px; /* Inner padding for the item */
-        border-radius: 8px;
-        background: #f0f0f0; /* Changed preview item background to light gray */
+        border_radius: 8px;
+        background: #f0f0f0; /* Preview item background is light gray */
         border: 1px solid #e0e0e0;
     }
 
     .preview-item img {
         width: 100%; /* Image takes full available width within .preview-item */
         height: auto;     /* Maintain aspect ratio */
-        border-radius: 4px; /* Adjusted image border radius */
-        margin-bottom: 8px; /* Space below the image */
-        object-fit: contain; /* Scale image to fit container while maintaining aspect ratio */
-        max-height: 180px; /* Limit image height to keep preview items consistent */
+        border_radius: 4px; /* Adjusted image border radius */
+        margin_bottom: 8px; /* Space below the image */
+        object_fit: contain; /* Scale image to fit container while maintaining aspect ratio */
+        max_height: 180px; /* Limit image height to keep preview items consistent */
     }
 
     .preview-item-name {
-        font-size: 12px;
-        margin-bottom: 5px;
+        font_size: 12px;
+        margin_bottom: 5px;
         color: #333;
-        word-break: break-all; /* Break long filenames */
+        word_break: break-all; /* Break long filenames */
         height: 30px; /* Give it a fixed height to prevent layout shifts */
         overflow: hidden;
         width: 100%; /* Ensure name takes full width */
-        text-overflow: ellipsis; /* Add ellipsis for long names */
-        white-space: nowrap; /* Prevent wrapping */
+        text_overflow: ellipsis; /* Add ellipsis for long names */
+        white_space: nowrap; /* Prevent wrapping */
     }
 
     /* Style for the new download link */
     .download-link {
-        font-size: 10px;
+        font_size: 10px;
         color: #888; /* Gray color */
-        text-decoration: none; /* Remove underline */
-        margin-top: 5px; /* Space above the link */
+        text_decoration: none; /* Remove underline */
+        margin_top: 5px; /* Space above the link */
     }
 
     .download-link:hover {
-        text-decoration: underline; /* Underline on hover */
+        text_decoration: underline; /* Underline on hover */
         color: #555;
     }
 
     /* Add some margin below subheaders for better section separation */
     h2 {
-        margin-bottom: 0.9rem !important;
+        margin_bottom: 0.9rem !important;
     }
 
     /* Ensure download buttons have some space */
     .stDownloadButton {
-        margin-top: 10px;
+        margin_top: 10px;
     }
 
     /* CSS for the animated preloader and text */
     .preloader-area {
         display: flex;
-        align-items: center;
-        justify-content: center; /* Center the content */
+        align_items: center;
+        justify_content: center; /* Center the content */
         margin: 20px auto; /* Center the container */
-        min-height: 40px; /* Ensure it has some height */
+        min_height: 40px; /* Ensure it has some height */
     }
 
     .preloader {
         border: 4px solid #f3f3f3; /* Light grey */
-        border-top: 4px solid #3498db; /* Blue */
-        border-radius: 50%;
+        border_top: 4px solid #3498db; /* Blue */
+        border_radius: 50%;
         width: 30px;
         height: 30px;
         animation: spin 1s linear infinite;
-        margin-right: 15px; /* Space between spinner and text */
+        margin_right: 15px; /* Space between spinner and text */
     }
 
     .preloader-text {
-        font-size: 16px;
+        font_size: 16px;
         color: #555;
     }
 
@@ -189,12 +189,16 @@ def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
 
 # --- Draw Layout Function ---
 
-def draw_layout(image, colors, position, border_thickness_px, swatch_border_thickness_percent,
+def draw_layout(image, colors, position, all_border_thickness_px,
                 border_color, swatch_border_color, swatch_size_percent, remove_adjacent_border):
-    """Draws the image layout with color swatches. Swatch size and border are percentages."""
+    """Draws the image layout with color swatches using a single pixel border thickness."""
 
     img_w, img_h = image.size
-    main_border = border_thickness_px # Already in pixels
+    # Use the single slider value for all border thicknesses
+    main_border = all_border_thickness_px
+    swatch_border_thickness_px = all_border_thickness_px
+    separating_line_thickness = all_border_thickness_px
+
 
     # Calculate actual swatch size in pixels based on percentage
     if position in ['top', 'bottom']:
@@ -206,35 +210,6 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
 
     if actual_swatch_size_px <= 0 : # Ensure swatch size is at least 1px if calculated to 0
         actual_swatch_size_px = 1
-
-    # --- Calculate swatch border thickness based on the shorter edge of the swatch ---
-    # Calculate the dimensions of a single swatch
-    swatch_total_width = img_w
-    swatch_total_height = img_h
-
-    if position in ['top', 'bottom']:
-         if len(colors) > 0:
-             swatch_width_for_calc = swatch_total_width // len(colors)
-             swatch_height_for_calc = actual_swatch_size_px
-         else:
-             swatch_width_for_calc = swatch_total_width # Should not happen if colors is not empty
-             swatch_height_for_calc = actual_swatch_size_px
-    else: # 'left' or 'right'
-         if len(colors) > 0:
-             swatch_width_for_calc = actual_swatch_size_px
-             swatch_height_for_calc = swatch_total_height // len(colors)
-         else:
-             swatch_width_for_calc = actual_swatch_size_px
-             swatch_height_for_calc = swatch_total_height
-
-    # Determine the shorter edge of the swatch for thickness calculation
-    shorter_swatch_edge = min(swatch_width_for_calc, swatch_height_for_calc)
-
-    # Calculate swatch border thickness based on the shorter edge
-    swatch_border_thickness_px = int(shorter_swatch_edge * (swatch_border_thickness_percent / 100))
-    if swatch_border_thickness_px < 1 and swatch_border_thickness_percent > 0:
-        swatch_border_thickness_px = 1 # Ensure at least 1px if percentage is > 0
-    # --- End swatch border thickness calculation ---
 
 
     if not colors:
@@ -259,10 +234,6 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
 
     # Determine canvas size and image paste position based on swatch position
     # Canvas size needs to accommodate image, swatches, main borders, and the separating line thickness
-    # The separating line thickness will be swatch_border_thickness_px
-    separating_line_thickness = swatch_border_thickness_px
-
-
     if position == 'top':
         canvas_h = img_h + actual_swatch_size_px + 2 * main_border + separating_line_thickness
         canvas_w = img_w + 2 * main_border
@@ -510,13 +481,11 @@ with col2:
 with col3:
     st.subheader("Borders")
 
-    # Image border thickness as a percentage
-    border_thickness_percent = st.slider("Image border thickness (% of width)", 0, 10, 0, key="border_thickness_percent")
-    border_color = st.color_picker("Image border color", "#FFFFFF", key="border_color")
+    # Single slider for all border thicknesses in pixels
+    all_border_thickness_px_val = st.slider("All Border Thickness (px)", 0, 20, 0, key="all_border_thickness_px")
 
-    # Swatch border thickness as a percentage of swatch size
-    swatch_border_thickness_percent_val = st.slider("Swatch border thickness (% of swatch size)", 0, 50, 5, key="swatch_border_thickness_percent")
-    swatch_border_color = st.color_picker("Swatch border color", "#FFFFFF", key="swatch_border_color") # Default color changed to white
+    border_color = st.color_picker("Main Border Color", "#FFFFFF", key="border_color")
+    swatch_border_color = st.color_picker("Swatch Border Color", "#FFFFFF", key="swatch_border_color") # Default color changed to white
 
     remove_adjacent_border = st.checkbox("Align swatches with image edge", value=True, key="remove_adjacent_border")
 
@@ -581,14 +550,11 @@ if uploaded_files and positions:
                     # st.warning(f"Failed to extract palette for `{file_name}`. Skipping swatches.") # Less verbose
                     pass # Continue even if palette extraction fails
 
-                # Calculate image border thickness in pixels based on percentage of image width
-                border_px = int(image.width * (border_thickness_percent / 100))
-
-
+                # Pass the single pixel thickness value
                 for pos_idx, pos in enumerate(positions):
                     try:
                         result_img = draw_layout(
-                            image.copy(), palette, pos, border_px, swatch_border_thickness_percent_val, # Pass percentage
+                            image.copy(), palette, pos, all_border_thickness_px_val,
                             border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
                         )
 
@@ -745,7 +711,7 @@ elif not uploaded_files:
     preview_container.empty()
     download_buttons_container.empty()
     spinner_container.empty()
-    preloader_and_status_container.empty()
+preloader_and_status_container.empty()
 
 # Initially disable the download button if no files are uploaded or positions selected
 if not uploaded_files or not positions:
