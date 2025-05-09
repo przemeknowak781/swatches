@@ -177,9 +177,9 @@ def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
 
 
 # --- Draw Layout Function ---
-def draw_layout(image, colors, position, border_thickness_px, swatch_border_thickness,
+def draw_layout(image, colors, position, border_thickness_px, swatch_border_thickness_percent,
                 border_color, swatch_border_color, swatch_size_percent, remove_adjacent_border):
-    """Draws the image layout with color swatches. Swatch size is now a percentage."""
+    """Draws the image layout with color swatches. Swatch size and border are percentages."""
     img_w, img_h = image.size
     border = border_thickness_px # Already in pixels
 
@@ -193,6 +193,11 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
 
     if actual_swatch_size_px <= 0 : # Ensure swatch size is at least 1px if calculated to 0
         actual_swatch_size_px = 1
+
+    # Calculate swatch border thickness in pixels based on percentage of swatch size
+    swatch_border_thickness_px = int(actual_swatch_size_px * (swatch_border_thickness_percent / 100))
+    if swatch_border_thickness_px < 1 and swatch_border_thickness_percent > 0:
+        swatch_border_thickness_px = 1 # Ensure at least 1px if percentage is > 0
 
 
     if not colors:
@@ -298,7 +303,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
         draw.rectangle([x0, y0, x1, y1], fill=tuple(color_tuple))
 
         # Draw swatch borders if thickness > 0
-        if swatch_border_thickness > 0:
+        if swatch_border_thickness_px > 0:
             # Define border coordinates
             top_border = [(x0, y0), (x1, y0)]
             bottom_border = [(x0, y1), (x1, y1)]
@@ -307,21 +312,21 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
 
             # Draw borders, potentially skipping adjacent border if remove_adjacent_border is True
             if not (remove_adjacent_border and position == 'top' and y0 == border):
-                 draw.line(top_border, fill=swatch_border_color, width=swatch_border_thickness)
+                 draw.line(top_border, fill=swatch_border_color, width=swatch_border_thickness_px)
             if not (remove_adjacent_border and position == 'bottom' and y1 == (canvas.height - border)):
-                 draw.line(bottom_border, fill=swatch_border_color, width=swatch_border_thickness)
+                 draw.line(bottom_border, fill=swatch_border_color, width=swatch_border_thickness_px)
             if not (remove_adjacent_border and position == 'left' and x0 == border):
-                 draw.line(left_border, fill=swatch_border_color, width=swatch_border_thickness)
+                 draw.line(left_border, fill=swatch_border_color, width=swatch_border_thickness_px)
             if not (remove_adjacent_border and position == 'right' and x1 == (canvas.width - border)):
-                 draw.line(right_border, fill=swatch_border_color, width=swatch_border_thickness)
+                 draw.line(right_border, fill=swatch_border_color, width=swatch_border_thickness_px)
 
             # Draw internal borders between swatches
             if position in ['top', 'bottom']:
                 if i > 0: # Draw left border for swatches after the first one
-                    draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+                    draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness_px)
             else: # 'left' or 'right'
                 if i > 0: # Draw top border for swatches after the first one
-                    draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
+                    draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness_px)
 
     return canvas
 
@@ -403,8 +408,9 @@ with col3:
     st.subheader("Borders")
     border_thickness_percent = st.slider("Image border thickness (% of width)", 0, 10, 0, key="border_thickness_percent")
     border_color = st.color_picker("Image border color", "#FFFFFF", key="border_color")
-    swatch_border_thickness = st.slider("Swatch border thickness (px)", 0, 10, 1, key="swatch_border_thickness")
-    swatch_border_color = st.color_picker("Swatch border color", "#CCCCCC", key="swatch_border_color")
+    # Swatch border thickness changed to percentage
+    swatch_border_thickness_percent_val = st.slider("Swatch border thickness (% of swatch size)", 0, 50, 5, key="swatch_border_thickness_percent")
+    swatch_border_color = st.color_picker("Swatch border color", "#FFFFFF", key="swatch_border_color") # Default color changed to white
     remove_adjacent_border = st.checkbox("Align swatches with image edge", value=True, key="remove_adjacent_border")
 
 
@@ -429,6 +435,9 @@ if uploaded_files and positions:
     individual_preview_html_parts = []
     zip_buffer = io.BytesIO()
 
+    total_files_to_process = len(uploaded_files) * len(positions)
+    processed_files_count = 0
+
     # Use compresslevel=0 (ZIP_STORED) for speed, as images are already compressed.
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, compresslevel=0) as zipf:
         for file_idx, uploaded_file_obj in enumerate(uploaded_files):
@@ -447,6 +456,14 @@ if uploaded_files and positions:
                 w, h = image.size
                 if not (10 <= w <= 10000 and 10 <= h <= 10000):
                     st.warning(f"`{file_name}` has an unsupported resolution ({w}x{h}). Skipped.")
+                    processed_files_count += len(positions) # Increment count for skipped file
+                    # Update preloader text for skipped file
+                    preloader_and_status_container.markdown(f"""
+                        <div class='preloader-area'>
+                            <div class='preloader'></div>
+                            <span class='preloader-text'>Generating in progress... {processed_files_count}/{total_files_to_process}</span>
+                        </div>
+                    """, unsafe_allow_html=True)
                     continue # Skip this file
 
                 if image.mode not in ("RGB", "L"):
@@ -462,7 +479,7 @@ if uploaded_files and positions:
                 for pos_idx, pos in enumerate(positions):
                     try:
                         result_img = draw_layout(
-                            image.copy(), palette, pos, border_px, swatch_border_thickness,
+                            image.copy(), palette, pos, border_px, swatch_border_thickness_percent_val, # Pass percentage
                             border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
                         )
 
@@ -523,15 +540,50 @@ if uploaded_files and positions:
                         current_full_html_content = ("<div id='preview-zone'>" + "\n".join(individual_preview_html_parts) + "</div>")
                         preview_display_area.markdown(current_full_html_content, unsafe_allow_html=True)
 
+                        processed_files_count += 1 # Increment count for successfully processed layout
+                        # Update preloader text with progress
+                        preloader_and_status_container.markdown(f"""
+                            <div class='preloader-area'>
+                                <div class='preloader'></div>
+                                <span class='preloader-text'>Generating in progress... {processed_files_count}/{total_files_to_process}</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+
                     except Exception as e_layout:
                         st.error(f"Error creating layout for {file_name} (pos: {pos}): {e_layout}")
+                        processed_files_count += 1 # Increment count even if layout creation fails
+                        # Update preloader text with progress
+                        preloader_and_status_container.markdown(f"""
+                            <div class='preloader-area'>
+                                <div class='preloader'></div>
+                                <span class='preloader-text'>Generating in progress... {processed_files_count}/{total_files_to_process}</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+
 
             # --- End Exception Handling for File Processing ---
             except UnidentifiedImageError:
                 st.warning(f"Could not identify image file: `{file_name}`. Skipped.")
+                processed_files_count += len(positions) # Increment count for skipped file
+                # Update preloader text for skipped file
+                preloader_and_status_container.markdown(f"""
+                    <div class='preloader-area'>
+                        <div class='preloader'></div>
+                        <span class='preloader-text'>Generating in progress... {processed_files_count}/{total_files_to_process}</span>
+                    </div>
+                """, unsafe_allow_html=True)
                 continue # Skip to the next file
             except Exception as e:
                 st.error(f"Error processing `{file_name}`: {e}. Skipped.")
+                processed_files_count += len(positions) # Increment count for skipped file
+                # Update preloader text for skipped file
+                preloader_and_status_container.markdown(f"""
+                    <div class='preloader-area'>
+                        <div class='preloader'></div>
+                        <span class='preloader-text'>Generating in progress... {processed_files_count}/{total_files_to_process}</span>
+                    </div>
+                """, unsafe_allow_html=True)
                 continue # Skip to the next file
 
 
@@ -566,7 +618,6 @@ elif uploaded_files and not positions:
     download_buttons_container.empty()
     spinner_container.empty()
     preloader_and_status_container.empty()
-    # uploaded_files_display_container.empty() # Removed this line
 elif not uploaded_files:
     st.info("Upload images to get started.")
     # Clear previews and buttons if no files are uploaded
@@ -574,7 +625,6 @@ elif not uploaded_files:
     download_buttons_container.empty()
     spinner_container.empty()
     preloader_and_status_container.empty()
-    # uploaded_files_display_container.empty() # Removed this line
 
 # Initially disable the download button if no files are uploaded or positions selected
 if not uploaded_files or not positions:
