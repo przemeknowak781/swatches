@@ -99,18 +99,22 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
 
 # Streamlit UI
 st.set_page_config(layout="wide")
+st.markdown("<div style='margin: 20px;'>", unsafe_allow_html=True)
 st.title("🎨 Color Swatch Generator")
 
-uploaded_files = st.file_uploader("Upload one or more images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+col1, col2 = st.columns([1, 2])
+with col1:
+    uploaded_files = st.file_uploader("Upload images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-positions = st.multiselect("Choose swatch position(s)", ["top", "bottom", "left", "right"], default=["bottom"])
-num_colors = st.slider("Number of swatches (dominant colors)", min_value=2, max_value=12, value=6)
-swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
-border_thickness = st.slider("Border thickness (in % of image width)", min_value=1, max_value=10, value=5)
-swatch_border_thickness = st.slider("Swatch border thickness (in px)", min_value=0, max_value=10, value=5)
-border_color = st.color_picker("Image border color", value="#FFFFFF")
-swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
-remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
+with col2:
+    positions = st.multiselect("Swatch position(s)", ["top", "bottom", "left", "right"], default=["bottom"])
+    num_colors = st.slider("Number of swatches", min_value=2, max_value=12, value=6)
+    swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
+    border_thickness = st.slider("Image border thickness (% of image width)", min_value=0, max_value=10, value=0)
+    swatch_border_thickness = st.slider("Swatch border thickness (px)", min_value=0, max_value=50, value=5)
+    border_color = st.color_picker("Image border color", value="#FFFFFF")
+    swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
+    remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
 
 if uploaded_files and positions:
     zip_buffer = io.BytesIO()
@@ -148,3 +152,5 @@ if uploaded_files and positions:
     st.markdown("### Preview")
     full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "\n".join(preview_html_blocks) + "</div>"
     st.markdown(full_html, unsafe_allow_html=True)
+
+st.markdown("</div>", unsafe_allow_html=True)
