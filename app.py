@@ -198,7 +198,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
     # Calculate actual swatch size in pixels based on percentage
     if position in ['top', 'bottom']:
         # Base swatch size on image height for horizontal swatches
-        actual_swatch_size_px = int(img_h * (swatch_size_percent / 100)) # Corrected variable name
+        actual_swatch_size_px = int(img_h * (swatch_size_percent / 100))
     else: # 'left', 'right'
         # Base swatch size on image width for vertical swatches
         actual_swatch_size_px = int(img_w * (swatch_size_percent / 100))
@@ -248,7 +248,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             extra_width_for_last_swatch = swatch_total_width % len(colors)
         else:
             swatch_width = swatch_total_width # Should not happen if colors is not empty
-        # Swatch area coordinates for outer border
+        # Swatch area coordinates for inner borders relative to canvas
         swatch_area_x0 = border
         swatch_area_y0 = border
         swatch_area_x1 = border + img_w
@@ -268,7 +268,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             extra_width_for_last_swatch = swatch_total_width % len(colors)
         else:
             swatch_width = swatch_total_width
-        # Swatch area coordinates for outer border
+        # Swatch area coordinates for inner borders relative to canvas
         swatch_area_x0 = border
         swatch_area_y0 = border + img_h
         swatch_area_x1 = border + img_w
@@ -288,7 +288,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             extra_height_for_last_swatch = swatch_total_height % len(colors)
         else:
             swatch_height = swatch_total_height
-        # Swatch area coordinates for outer border
+        # Swatch area coordinates for inner borders relative to canvas
         swatch_area_x0 = border
         swatch_area_y0 = border
         swatch_area_x1 = border + actual_swatch_size_px
@@ -308,7 +308,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             extra_height_for_last_swatch = swatch_total_height % len(colors)
         else:
             swatch_height = swatch_total_height
-        # Swatch area coordinates for outer border
+        # Swatch area coordinates for inner borders relative to canvas
         swatch_area_x0 = border + img_w
         swatch_area_y0 = border
         swatch_area_x1 = border + img_w + actual_swatch_size_px
@@ -354,8 +354,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             right_border = [(x1, y0), (x1, y1)]
 
             # Draw borders, potentially skipping adjacent border if remove_adjacent_border is True
-            # Note: The logic here is for borders *between* swatches and the inner edge of the swatch area.
-            # The outer border of the entire swatch area is handled separately below.
+            # These borders are *between* swatches or between a swatch and the image edge.
             if not (remove_adjacent_border and position == 'top' and y0 == swatch_area_y0):
                  draw.line(top_border, fill=swatch_border_color, width=swatch_border_thickness_px)
 
@@ -376,19 +375,20 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
                 if i > 0: # Draw top border for swatches after the first one
                     draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness_px)
 
-    # --- Draw Outer Border Around the Entire Swatch Area ---
-    if border_thickness_px > 0:
-        # Define the coordinates for the outer border lines of the swatch area
-        outer_top_border = [(swatch_area_x0, swatch_area_y0), (swatch_area_x1, swatch_area_y0)]
-        outer_bottom_border = [(swatch_area_x0, swatch_area_y1), (swatch_area_x1, swatch_area_y1)]
-        outer_left_border = [(swatch_area_x0, swatch_area_y0), (swatch_area_x0, swatch_area_y1)]
-        outer_right_border = [(swatch_area_x1, swatch_area_y0), (swatch_area_x1, swatch_area_y1)]
-
-        # Draw the outer borders using the main border color and thickness
-        draw.line(outer_top_border, fill=border_color, width=border_thickness_px)
-        draw.line(outer_bottom_border, fill=border_color, width=border_thickness_px)
-        draw.line(outer_left_border, fill=border_color, width=border_thickness_px)
-        draw.line(outer_right_border, fill=border_color, width=border_thickness_px)
+    # --- Removed the code to draw the outer border around the entire swatch area ---
+    # This section is commented out or removed to achieve the flush look.
+    # if border_thickness_px > 0:
+    #     # Define the coordinates for the outer border lines of the swatch area
+    #     outer_top_border = [(swatch_area_x0, swatch_area_y0), (swatch_area_x1, swatch_area_y0)]
+    #     outer_bottom_border = [(swatch_area_x0, swatch_area_y1), (swatch_area_x1, swatch_area_y1)]
+    #     outer_left_border = [(swatch_area_x0, swatch_area_y0), (swatch_area_x0, swatch_area_y1)]
+    #     outer_right_border = [(swatch_area_x1, swatch_area_y0), (swatch_area_x1, swatch_area_y1)]
+    #
+    #     # Draw the outer borders using the main border color and thickness
+    #     draw.line(outer_top_border, fill=border_color, width=border_thickness_px)
+    #     draw.line(outer_bottom_border, fill=border_color, width=border_thickness_px)
+    #     draw.line(outer_left_border, fill=border_color, width=border_thickness_px)
+    #     draw.line(outer_right_border, fill=border_color, width=border_thickness_px)
 
 
     return canvas
