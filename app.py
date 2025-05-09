@@ -207,10 +207,35 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
     if actual_swatch_size_px <= 0 : # Ensure swatch size is at least 1px if calculated to 0
         actual_swatch_size_px = 1
 
-    # Calculate swatch border thickness in pixels based on percentage of swatch size
-    swatch_border_thickness_px = int(actual_swatch_size_px * (swatch_border_thickness_percent / 100))
+    # --- Calculate swatch border thickness based on the shorter edge of the swatch ---
+    # Calculate the dimensions of a single swatch
+    swatch_total_width = img_w
+    swatch_total_height = img_h
+
+    if position in ['top', 'bottom']:
+         if len(colors) > 0:
+             swatch_width_for_calc = swatch_total_width // len(colors)
+             swatch_height_for_calc = actual_swatch_size_px
+         else:
+             swatch_width_for_calc = swatch_total_width # Should not happen if colors is not empty
+             swatch_height_for_calc = actual_swatch_size_px
+    else: # 'left' or 'right'
+         if len(colors) > 0:
+             swatch_width_for_calc = actual_swatch_size_px
+             swatch_height_for_calc = swatch_total_height // len(colors)
+         else:
+             swatch_width_for_calc = actual_swatch_size_px
+             swatch_height_for_calc = swatch_total_height
+
+    # Determine the shorter edge of the swatch for thickness calculation
+    shorter_swatch_edge = min(swatch_width_for_calc, swatch_height_for_calc)
+
+    # Calculate swatch border thickness based on the shorter edge
+    swatch_border_thickness_px = int(shorter_swatch_edge * (swatch_border_thickness_percent / 100))
     if swatch_border_thickness_px < 1 and swatch_border_thickness_percent > 0:
         swatch_border_thickness_px = 1 # Ensure at least 1px if percentage is > 0
+    # --- End swatch border thickness calculation ---
+
 
     if not colors:
         # If no colors extracted, just add the main border if requested
@@ -379,25 +404,25 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
     # This border is always drawn with the swatch_border_thickness_px and swatch_border_color
     if swatch_border_thickness_px > 0: # Only draw if swatch border is present
         if position == 'top':
-            # Draw the separating line using draw.line, adjusting coordinates slightly
-            line_start = (main_border, main_border + actual_swatch_size_px + separating_line_thickness / 2)
-            line_end = (main_border + img_w, main_border + actual_swatch_size_px + separating_line_thickness / 2)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=separating_line_thickness)
+            # Draw the separating line using draw.line
+            line_start = (main_border, main_border + actual_swatch_size_px)
+            line_end = (main_border + img_w, main_border + actual_swatch_size_px)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
         elif position == 'bottom':
-             # Draw the separating line using draw.line, adjusting coordinates slightly
-            line_start = (main_border, main_border + img_h + separating_line_thickness / 2)
-            line_end = (main_border + img_w, main_border + img_h + separating_line_thickness / 2)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=separating_line_thickness)
+             # Draw the separating line using draw.line
+            line_start = (main_border, main_border + img_h)
+            line_end = (main_border + img_w, main_border + img_h)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
         elif position == 'left':
-             # Draw the separating line using draw.line, adjusting coordinates slightly
-            line_start = (main_border + actual_swatch_size_px + separating_line_thickness / 2, main_border)
-            line_end = (main_border + actual_swatch_size_px + separating_line_thickness / 2, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=separating_line_thickness)
+             # Draw the separating line using draw.line
+            line_start = (main_border + actual_swatch_size_px, main_border)
+            line_end = (main_border + actual_swatch_size_px, main_border + img_h)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
         elif position == 'right':
-             # Draw the separating line using draw.line, adjusting coordinates slightly
-            line_start = (main_border + img_w + separating_line_thickness / 2, main_border)
-            line_end = (main_border + img_w + separating_line_thickness / 2, main_border + img_h)
-            draw.line([line_start, line_end], fill=swatch_border_color, width=separating_line_thickness)
+             # Draw the separating line using draw.line
+            line_start = (main_border + img_w, main_border)
+            line_end = (main_border + img_w, main_border + img_h)
+            draw.line([line_start, line_end], fill=swatch_border_color, width=swatch_border_thickness_px)
 
 
     return canvas
