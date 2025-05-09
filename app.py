@@ -196,12 +196,13 @@ def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
 # --- Draw Layout Function ---
 
 def draw_layout(image, colors, position, image_border_thickness_px, swatch_separator_thickness_px,
-                border_color, swatch_border_color, swatch_size_percent, remove_adjacent_border):
+                individual_swatch_border_thickness_px, border_color, swatch_border_color, swatch_size_percent, remove_adjacent_border):
     """Draws the image layout with color swatches using separate border thickness values."""
 
     img_w, img_h = image.size
     main_border = image_border_thickness_px
-    swatch_border_thickness_px = swatch_separator_thickness_px // 2 # Swatch internal borders are half the separator thickness
+    # Use the new slider value for borders *between* individual swatches
+    internal_swatch_border_thickness = individual_swatch_border_thickness_px
 
 
     # Calculate actual swatch size in pixels based on percentage
@@ -324,44 +325,23 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
         # Draw the swatch rectangle
         draw.rectangle([x0, y0, x1, y1], fill=tuple(color_tuple))
 
-        # Draw swatch borders if thickness > 0
-        if swatch_border_thickness_px > 0:
-            # Define border coordinates
-            top_border = [(x0, y0), (x1, y0)]
-            bottom_border = [(x0, y1), (x1, y1)]
-            left_border = [(x0, y0), (x0, y1)]
-            right_border = [(x1, y0), (x1, y1)]
-
-            # Draw outer swatch borders (top/bottom for horizontal, left/right for vertical)
-            # These are always drawn with swatch_border_thickness_px and swatch_border_color
-            if position in ['top', 'bottom']:
-                draw.line(top_border, fill=swatch_border_color, width=swatch_border_thickness_px)
-                draw.line(bottom_border, fill=swatch_border_color, width=swatch_border_thickness_px)
-            else: # 'left' or 'right'
-                draw.line(left_border, fill=swatch_border_color, width=swatch_border_thickness_px)
-                draw.line(right_border, fill=swatch_border_color, width=swatch_border_thickness_px)
-
-
-            # Draw internal borders between swatches - these are the ones affected by remove_adjacent_border
+        # Draw internal borders between swatches if thickness > 0
+        if internal_swatch_border_thickness > 0:
             if position in ['top', 'bottom']:
                 # Draw left border for swatches after the first one if not removing adjacent
                 if i > 0 and not remove_adjacent_border:
-                    # Use half thickness for lines *between* swatches
-                    draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
+                    draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=internal_swatch_border_thickness)
                 # Always draw the right border of the swatch if it's not the last one
                 if i < len(colors) - 1:
-                     # Use half thickness for lines *between* swatches
-                     draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
+                    draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=internal_swatch_border_thickness)
 
             else: # 'left' or 'right'
                 # Draw top border for swatches after the first one if not removing adjacent
                 if i > 0 and not remove_adjacent_border:
-                    # Use half thickness for lines *between* swatches
-                    draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
+                    draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=internal_swatch_border_thickness)
                 # Always draw the bottom border of the swatch if it's not the last one
                 if i < len(colors) - 1:
-                     # Use half thickness for lines *between* swatches
-                     draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
+                    draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=internal_swatch_border_thickness)
 
 
     # --- Draw Main Border Around the Entire Canvas ---
@@ -379,7 +359,7 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
         draw.line(outer_right_border, fill=border_color, width=main_border)
 
 
-    # --- Draw Border Between Swatch Area and Image (with swatch border color and swatch border thickness) ---
+    # --- Draw Border Between Swatch Area and Image (with swatch border color and swatch separator thickness) ---
     # This border is always drawn with the swatch_separator_thickness_px and swatch_border_color
     if swatch_separator_thickness_px > 0: # Only draw if swatch separator is present
         if position == 'top':
@@ -489,9 +469,12 @@ with col2:
 with col3:
     st.subheader("Borders")
 
-    # Separate sliders for image border and swatch separators
+    # Separate sliders for image border, swatch-image separator, and individual swatch borders
     image_border_thickness_px_val = st.slider("Image Border Thickness (px)", 0, 200, 0, key="image_border_thickness_px")
-    swatch_separator_thickness_px_val = st.slider("Swatch Separator Thickness (px)", 0, 200, 0, key="swatch_separator_thickness_px", help="Thickness of lines separating swatches and the swatch-image separator.")
+    swatch_separator_thickness_px_val = st.slider("Swatch-Image Separator Thickness (px)", 0, 200, 0, key="swatch_separator_thickness_px", help="Thickness of the line separating swatches from the image.")
+    # New slider for individual swatch borders
+    individual_swatch_border_thickness_px_val = st.slider("Individual Swatch Border Thickness (px)", 0, 200, 0, key="individual_swatch_border_thickness_px", help="Thickness of lines separating individual swatches.")
+
 
     border_color = st.color_picker("Main Border Color", "#FFFFFF", key="border_color")
     swatch_border_color = st.color_picker("Swatch Border Color", "#FFFFFF", key="swatch_border_color") # Default color changed to white
@@ -565,6 +548,7 @@ if uploaded_files and positions:
                         result_img = draw_layout(
                             image.copy(), palette, pos,
                             image_border_thickness_px_val, swatch_separator_thickness_px_val,
+                            individual_swatch_border_thickness_px_val, # Pass the new value
                             border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
                         )
 
