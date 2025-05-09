@@ -173,10 +173,13 @@ if uploaded_files and positions:
     with st.spinner("Generating previews..."):
         zip_buffer = io.BytesIO()
         preview_html_blocks = []
+        placeholder = preview_container.container()
+        zip_buffer = io.BytesIO()
+        preview_html_blocks = []
 
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
             preview_html_blocks = []
-            preview_container.markdown("""
+            placeholder.markdown("""
             <style>
             #preview-zone {
                 display: flex;
@@ -238,7 +241,7 @@ if uploaded_files and positions:
                     html_block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
                     html_block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
                     html_block += "</div>"
-                    placeholder.markdown(html_block, unsafe_allow_html=True)er.markdown(html_block, unsafe_allow_html=True)
+                    placeholder.markdown(html_block, unsafe_allow_html=True)
 
         zip_buffer.seek(0)
 
