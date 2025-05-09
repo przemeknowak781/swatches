@@ -233,14 +233,14 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
     swatch_area_y0 = 0
     swatch_area_x1 = 0
     swatch_area_y1 = 0
+    image_paste_x = border
+    image_paste_y = border
 
 
     # Determine canvas size and image paste position based on swatch position
     if position == 'top':
         canvas_h = img_h + actual_swatch_size_px + 2 * border
         canvas_w = img_w + 2 * border
-        canvas = Image.new("RGB", (canvas_w, canvas_h), border_color)
-        canvas.paste(image, (border, actual_swatch_size_px + border))
         swatch_y = border
         swatch_x_start = border
         swatch_total_width = img_w
@@ -254,13 +254,12 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
         swatch_area_y0 = border
         swatch_area_x1 = border + img_w
         swatch_area_y1 = border + actual_swatch_size_px
+        image_paste_y = actual_swatch_size_px + border
 
 
     elif position == 'bottom':
         canvas_h = img_h + actual_swatch_size_px + 2 * border
         canvas_w = img_w + 2 * border
-        canvas = Image.new("RGB", (canvas_w, canvas_h), border_color)
-        canvas.paste(image, (border, border))
         swatch_y = border + img_h
         swatch_x_start = border
         swatch_total_width = img_w
@@ -274,13 +273,12 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
         swatch_area_y0 = border + img_h
         swatch_area_x1 = border + img_w
         swatch_area_y1 = border + img_h + actual_swatch_size_px
+        image_paste_y = border
 
 
     elif position == 'left':
         canvas_w = img_w + actual_swatch_size_px + 2 * border
         canvas_h = img_h + 2 * border
-        canvas = Image.new("RGB", (canvas_w, canvas_h), border_color)
-        canvas.paste(image, (actual_swatch_size_px + border, border))
         swatch_x = border
         swatch_y_start = border
         swatch_total_height = img_h
@@ -294,13 +292,12 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
         swatch_area_y0 = border
         swatch_area_x1 = border + actual_swatch_size_px
         swatch_area_y1 = border + img_h
+        image_paste_x = actual_swatch_size_px + border
 
 
     elif position == 'right':
         canvas_w = img_w + actual_swatch_size_px + 2 * border
         canvas_h = img_h + 2 * border
-        canvas = Image.new("RGB", (canvas_w, canvas_h), border_color)
-        canvas.paste(image, (border, border))
         swatch_x = border + img_w
         swatch_y_start = border
         swatch_total_height = img_h
@@ -314,11 +311,16 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
         swatch_area_y0 = border
         swatch_area_x1 = border + img_w + actual_swatch_size_px
         swatch_area_y1 = border + img_h
+        image_paste_x = border
 
 
     else:
         return image.copy() # Should not happen with valid positions
 
+    # Create the canvas with the main border color
+    canvas = Image.new("RGB", (canvas_w, canvas_h), border_color)
+    # Paste the original image onto the canvas
+    canvas.paste(image, (image_paste_x, image_paste_y))
 
     draw = ImageDraw.Draw(canvas)
 
@@ -354,53 +356,48 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             left_border = [(x0, y0), (x0, y1)]
             right_border = [(x1, y0), (x1, y1)]
 
-            # Draw borders. The 'remove_adjacent_border' now only affects borders *between* swatches.
-            # The border adjacent to the image is always drawn if border_thickness_px > 0.
-
-            # Draw top border (always drawn if swatch border thickness > 0)
-            draw.line(top_border, fill=swatch_border_color, width=swatch_border_thickness_px)
-
-            # Draw bottom border (always drawn if swatch border thickness > 0)
-            draw.line(bottom_border, fill=swatch_border_color, width=swatch_border_thickness_px)
-
-            # Draw left border (always drawn if swatch border thickness > 0)
-            draw.line(left_border, fill=swatch_border_color, width=swatch_border_thickness_px)
-
-            # Draw right border (always drawn if swatch border thickness > 0)
-            draw.line(right_border, fill=swatch_border_color, width=swatch_border_thickness_px)
-
-
             # Draw internal borders between swatches - these are the ones affected by remove_adjacent_border
             if position in ['top', 'bottom']:
-                if i > 0 and not remove_adjacent_border: # Draw left border for swatches after the first one if not removing adjacent
+                # Draw left border for swatches after the first one if not removing adjacent
+                if i > 0 and not remove_adjacent_border:
                     draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness_px)
                 # Always draw the right border of the swatch if it's not the last one
                 if i < len(colors) - 1:
                      draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness_px)
 
             else: # 'left' or 'right'
-                if i > 0 and not remove_adjacent_border: # Draw top border for swatches after the first one if not removing adjacent
+                # Draw top border for swatches after the first one if not removing adjacent
+                if i > 0 and not remove_adjacent_border:
                     draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness_px)
                 # Always draw the bottom border of the swatch if it's not the last one
                 if i < len(colors) - 1:
                      draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness_px)
 
+            # Draw the outer swatch borders (top/bottom for horizontal, left/right for vertical)
+            # These are always drawn with swatch_border_thickness_px and swatch_border_color
+            if position in ['top', 'bottom']:
+                draw.line(top_border, fill=swatch_border_color, width=swatch_border_thickness_px)
+                draw.line(bottom_border, fill=swatch_border_color, width=swatch_border_thickness_px)
+            else: # 'left' or 'right'
+                draw.line(left_border, fill=swatch_border_color, width=swatch_border_thickness_px)
+                draw.line(right_border, fill=swatch_border_color, width=swatch_border_thickness_px)
+
 
     # --- Draw Border Between Swatch Area and Image ---
-    # This border is always drawn with the main border_thickness_px
+    # This border is always drawn with the main border_thickness_px and swatch_border_color
     if border_thickness_px > 0:
         if position == 'top':
             # Draw bottom border of the swatch area (top edge of the image)
-            draw.line([(swatch_area_x0, swatch_area_y1), (swatch_area_x1, swatch_area_y1)], fill=border_color, width=border_thickness_px)
+            draw.line([(swatch_area_x0, swatch_area_y1), (swatch_area_x1, swatch_area_y1)], fill=swatch_border_color, width=border_thickness_px)
         elif position == 'bottom':
             # Draw top border of the swatch area (bottom edge of the image)
-            draw.line([(swatch_area_x0, swatch_area_y0), (swatch_area_x1, swatch_area_y0)], fill=border_color, width=border_thickness_px)
+            draw.line([(swatch_area_x0, swatch_area_y0), (swatch_area_x1, swatch_area_y0)], fill=swatch_border_color, width=border_thickness_px)
         elif position == 'left':
             # Draw right border of the swatch area (left edge of the image)
-            draw.line([(swatch_area_x1, swatch_area_y0), (swatch_area_x1, swatch_area_y1)], fill=border_color, width=border_thickness_px)
+            draw.line([(swatch_area_x1, swatch_area_y0), (swatch_area_x1, swatch_area_y1)], fill=swatch_border_color, width=border_thickness_px)
         elif position == 'right':
             # Draw left border of the swatch area (right edge of the image)
-            draw.line([(swatch_area_x0, swatch_area_y0), (swatch_area_x0, swatch_area_y1)], fill=border_color, width=border_thickness_px)
+            draw.line([(swatch_area_x0, swatch_area_y0), (swatch_area_x0, swatch_area_y1)], fill=swatch_border_color, width=border_thickness_px)
 
 
     return canvas
