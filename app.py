@@ -104,11 +104,17 @@ if uploaded_files and positions:
     """, unsafe_allow_html=True)
 
     for name, img in preview_imgs:
+        img_resized = img.copy()
+        img_resized.thumbnail((200, 200))
+        with io.BytesIO() as buffer:
+            img_resized.save(buffer, format="PNG")
+            img_bytes = buffer.getvalue()
+
         st.markdown("""
             <div style='flex: 0 0 auto; text-align: center; width: 200px;'>
         """, unsafe_allow_html=True)
         st.caption(name)
-        st.image(img, use_container_width=True, clamp=True)
+        st.image(img_bytes, use_container_width=False, width=200)
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
