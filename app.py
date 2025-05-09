@@ -241,9 +241,22 @@ if uploaded_files and positions:
                     html_block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
                     html_block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
                     html_block += "</div>"
-                    placeholder.markdown(html_block, unsafe_allow_html=True)
+                    preview_html_blocks.append(html_block)
 
-        placeholder.markdown("</div>", unsafe_allow_html=True)
+        full_html = """
+            <style>
+            #preview-zone {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                gap: 30px;
+                padding: 20px;
+            }
+            </style>
+            <div id='preview-zone'>
+            """ + "
+".join(preview_html_blocks) + "</div>"
+        placeholder.markdown(full_html, unsafe_allow_html=True)
         zip_buffer.seek(0)
 
     st.download_button(
