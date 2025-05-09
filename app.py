@@ -125,6 +125,8 @@ with col1:
 with col2:
     st.subheader("Layout Settings")
     positions = []
+    
+    positions = []
 st.write("Swatch position(s):")
 cols = st.columns(4)
 with cols[0]:
