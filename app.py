@@ -99,8 +99,9 @@ if uploaded_files and positions:
     )
 
     st.markdown("### Preview")
-    st.markdown("""
-        <div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>
+    container_id = "preview-container"
+    st.markdown(f"""
+        <div id='{container_id}' style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>
     """, unsafe_allow_html=True)
 
     for name, img in preview_imgs:
@@ -110,11 +111,11 @@ if uploaded_files and positions:
             img_resized.save(buffer, format="PNG")
             img_bytes = buffer.getvalue()
 
-        st.markdown("""
+        st.markdown(f"""
             <div style='flex: 0 0 auto; text-align: center; width: 200px;'>
+                <div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>
+                <img src='data:image/png;base64,{img_bytes.decode("latin1").encode("base64").decode()}' width='200'>
+            </div>
         """, unsafe_allow_html=True)
-        st.caption(name)
-        st.image(img_bytes, use_container_width=False, width=200)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
