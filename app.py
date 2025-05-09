@@ -6,6 +6,9 @@ import io
 import zipfile
 import base64
 
+# --- Reset / Clear State Button ---
+# (removed because Streamlit should not rely on buttons for uploader validation)
+
 # --- Page Setup ---
 st.set_page_config(layout="wide")
 st.title("🎨 Color Swatch Generator")
@@ -161,9 +164,13 @@ if uploaded_files and positions:
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
             for uploaded_file in uploaded_files:
                 try:
-                    image = Image.open(uploaded_file)
+                    try:
+                        image = Image.open(uploaded_file)
+                    except Exception as api_error:
+                        st.warning(f"⚠️ `{uploaded_file.name}` could not be loaded due to API error. Skipped.")
+                        continue
 
-                    # Additional safety checks
+                    # --- Additional safety check ---
                     w, h = image.size
                     if w < 100 or h < 100:
                         st.warning(f"⚠️ `{uploaded_file.name}` has too small resolution ({w}x{h}). Skipped.")
@@ -176,7 +183,7 @@ if uploaded_files and positions:
                 except UnidentifiedImageError:
                     st.warning(f"⚠️ `{uploaded_file.name}` is not a valid image file. Skipped.")
                     continue
-                except (UnidentifiedImageError, OSError, ValueError, RuntimeError):
+                except (UnidentifiedImageError, OSError, ValueError, RuntimeError) as e:
                     st.warning(f"⚠️ `{uploaded_file.name}` could not be processed due to a read error. Skipped.")
                     continue
 
