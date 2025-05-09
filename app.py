@@ -116,6 +116,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 zip_buffer = None
+preview_container = st.container()
 preview_html_blocks = []
 
 st.markdown('<div class="responsive-columns">', unsafe_allow_html=True)
@@ -175,7 +176,9 @@ if uploaded_files and positions:
         zip_buffer.seek(0)
 
 if preview_html_blocks:
-    st.markdown("### Preview")
-    full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "\n".join(preview_html_blocks) + "</div>"
-    st.markdown(full_html, unsafe_allow_html=True)
-    st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")
+    with preview_container:
+        st.markdown("### Preview")
+        full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "
+".join(preview_html_blocks) + "</div>"
+        st.markdown(full_html, unsafe_allow_html=True)
+        st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")"📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")
