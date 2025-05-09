@@ -248,7 +248,8 @@ if uploaded_files and positions:
             "#preview-zone { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 30px; padding: 20px; }"
             "</style>"
             "<div id='preview-zone'>"
-            + "\n".join(preview_html_blocks) +
+            + "
+".join(preview_html_blocks) +
             "</div>"
         )
         placeholder.markdown(full_html, unsafe_allow_html=True)
