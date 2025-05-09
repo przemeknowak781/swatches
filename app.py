@@ -4,17 +4,35 @@ import numpy as np
 from sklearn.cluster import KMeans
 import io
 import zipfile
-import os
 import base64
 
-# Function to extract dominant colors
+# --- Setup Page ---
+st.set_page_config(layout="wide")
+st.title("🎨 Color Swatch Generator")
+
+# --- Containers ---
+preview_container = st.container()
+st.markdown("""
+    <style>
+    @media (min-width: 768px) {
+        .responsive-columns {
+            display: flex;
+            gap: 2rem;
+        }
+        .responsive-columns > div {
+            flex: 1;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- Functions ---
 def extract_palette(image, num_colors=6):
     img = image.convert('RGB')
     data = np.array(img).reshape((-1, 3))
     kmeans = KMeans(n_clusters=num_colors, random_state=42).fit(data)
     return kmeans.cluster_centers_.astype(int)
 
-# Drawing function
 def draw_layout(image, colors, position, border_thickness, swatch_border_thickness, border_color, swatch_border_color, swatch_size, remove_adjacent_border):
     img_w, img_h = image.size
     border = border_thickness
@@ -97,30 +115,7 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
 
     return canvas
 
-# Streamlit UI
-st.set_page_config(layout="wide")
-st.title("🎨 Color Swatch Generator")
-
-st.markdown("""
-    <style>
-    @media (min-width: 768px) {
-        .responsive-columns {
-            display: flex;
-            gap: 2rem;
-        }
-        .responsive-columns > div {
-            flex: 1;
-        }
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-zip_buffer = None
-preview_container = st.container()
-preview_html_blocks = []
-
-st.markdown('<div class="responsive-columns">', unsafe_allow_html=True)
-
+# --- User Input Columns ---
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -141,12 +136,12 @@ with col3:
     swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
     remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
 
-st.markdown('</div>', unsafe_allow_html=True)
-
+# --- Processing & Preview ---
 if uploaded_files and positions:
     with st.spinner("Generating previews, please wait..."):
         zip_buffer = io.BytesIO()
         preview_html_blocks = []
+
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
             for uploaded_file in uploaded_files:
                 image = Image.open(uploaded_file).convert("RGB")
@@ -167,18 +162,17 @@ if uploaded_files and positions:
                     with io.BytesIO() as buffer:
                         result_img.save(buffer, format="PNG")
                         img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-                    block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; background: #eeeeee;'>"
-                    block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
-                    block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
-                    block += "</div>"
-                    preview_html_blocks.append(block)
+
+                    html_block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; background: #eeeeee;'>"
+                    html_block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
+                    html_block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
+                    html_block += "</div>"
+                    preview_html_blocks.append(html_block)
 
         zip_buffer.seek(0)
 
-if preview_html_blocks:
-    with preview_container:
-        st.markdown("### Preview")
-        full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "
-".join(preview_html_blocks) + "</div>"
-        st.markdown(full_html, unsafe_allow_html=True)
-        st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")"📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")
+        with preview_container:
+            st.markdown("### Preview")
+            full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "\n".join(preview_html_blocks) + "</div>"
+            st.markdown(full_html, unsafe_allow_html=True)
+            st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")
