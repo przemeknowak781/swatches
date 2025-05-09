@@ -71,6 +71,7 @@ st.markdown("""
         align-items: flex-start; /* Align items to the top */
         margin-bottom: 20px; /* Space below the preview zone */
         background: #ffffff; /* Preview background is white */
+        border: 1px solid #e0e0e0; /* Add a border to the preview container */
     }
 
     /* Styles for individual preview items */
@@ -78,7 +79,7 @@ st.markdown("""
         flex: 0 0 auto; /* Items won't grow or shrink */
         display: flex; /* Use flexbox for internal layout */
         flex-direction: column; /* Stack name, image, link vertically */
-        align_items: center; /* Center content horizontally */
+        align-items: center; /* Center content horizontally */
         text-align: center;
         width: 220px; /* Increased width for each preview item */
         box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Subtle shadow */
@@ -174,17 +175,7 @@ st.markdown("""
         border-color: #007BFF !important; /* Blue border */
     }
 
-    /* Subtle strobe effect for the file uploader container */
-    .strobe-background {
-        animation: subtle-strobe 2s infinite alternate; /* Adjust timing and style as needed */
-        padding: 10px; /* Add some padding so the background is visible */
-        border-radius: 5px; /* Optional: add rounded corners */
-    }
-
-    @keyframes subtle-strobe {
-        0% { background-color: #f0f0f0; } /* Light grey */
-        100% { background-color: #e0e0e0; } /* Slightly darker grey */
-    }
+    /* Removed strobe effect CSS */
     </style>
 """, unsafe_allow_html=True)
 
@@ -273,8 +264,9 @@ def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
 # --- Draw Layout Function ---
 
 def draw_layout(image, colors, position, image_border_thickness_px, swatch_separator_thickness_px,
-                individual_swatch_border_thickness_px, border_color, swatch_border_color, swatch_size_percent, remove_adjacent_border):
+                individual_swatch_border_thickness_px, border_color, swatch_border_color, swatch_size_percent):
     """Draws the image layout with color swatches using separate border thickness values."""
+    # Removed remove_adjacent_border parameter
 
     img_w, img_h = image.size
     main_border = image_border_thickness_px
@@ -405,17 +397,11 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
         # Draw internal borders between swatches if thickness > 0
         if internal_swatch_border_thickness > 0:
             if position in ['top', 'bottom']:
-                # Draw left border for swatches after the first one if not removing adjacent
-                if i > 0 and not remove_adjacent_border:
-                    draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=internal_swatch_border_thickness)
                 # Always draw the right border of the swatch if it's not the last one
                 if i < len(colors) - 1:
                     draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=internal_swatch_border_thickness)
 
             else: # 'left' or 'right'
-                # Draw top border for swatches after the first one if not removing adjacent
-                if i > 0 and not remove_adjacent_border:
-                    draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=internal_swatch_border_thickness)
                 # Always draw the bottom border of the swatch if it's not the last one
                 if i < len(colors) - 1:
                     draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=internal_swatch_border_thickness)
@@ -473,8 +459,8 @@ try:
         # Revert to standard subheader
         st.subheader("Upload Images")
 
-        # Apply strobe background class to the file uploader container
-        st.markdown('<div class="strobe-background">', unsafe_allow_html=True)
+        # Removed strobe background class from the file uploader container
+        # st.markdown('<div class="strobe-background">', unsafe_allow_html=True)
         # Define allowed extensions
         allowed_extensions = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif", "ico"]
         uploaded_files = st.file_uploader(
@@ -483,7 +469,8 @@ try:
             type=allowed_extensions, # Use extensions here
             key="file_uploader" # Added a key
         )
-        st.markdown('</div>', unsafe_allow_html=True) # Close the div
+        # Removed closing div for strobe background
+        # st.markdown('</div>', unsafe_allow_html=True)
 
 
         # Filter out files with unsupported extensions and check magic bytes
@@ -553,8 +540,9 @@ try:
         row1_layout = st.columns(2)
         row2_layout = st.columns(2)
 
-        if row1_layout[0].toggle("Top", key="pos_top"): positions.append("top")
-        if row1_layout[1].toggle("Left", key="pos_left"): positions.append("left")
+        # Turn on Left and Top by default
+        if row1_layout[0].toggle("Top", value=True, key="pos_top"): positions.append("top")
+        if row1_layout[1].toggle("Left", value=True, key="pos_left"): positions.append("left")
         # Default 'bottom' to True as requested
         if row2_layout[0].toggle("Bottom", value=True, key="pos_bottom"): positions.append("bottom")
         if row2_layout[1].toggle("Right", key="pos_right"): positions.append("right")
@@ -588,7 +576,8 @@ try:
         border_color = st.color_picker("Main Border Color", "#FFFFFF", key="border_color")
         swatch_border_color = st.color_picker("Swatch Border Color", "#FFFFFF", key="swatch_border_color") # Default color changed to white
 
-        remove_adjacent_border = st.checkbox("Align swatches with image edge", value=True, key="remove_adjacent_border")
+        # Removed the "Align swatches with image edge" checkbox
+        # remove_adjacent_border = st.checkbox("Align swatches with image edge", value=True, key="remove_adjacent_border")
 
 
     # --- Check for settings change to reset state ---
@@ -608,7 +597,7 @@ try:
         individual_swatch_border_thickness_px_val,
         border_color,
         swatch_border_color,
-        remove_adjacent_border
+        # Removed remove_adjacent_border from hash
     )
     current_settings_hash = hash(current_settings)
 
@@ -766,7 +755,8 @@ try:
                                     image.copy(), palette, pos,
                                     image_border_thickness_px_val, swatch_separator_thickness_px_val,
                                     individual_swatch_border_thickness_px_val, # Pass the new value
-                                    border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
+                                    border_color, swatch_border_color, swatch_size_percent_val
+                                    # Removed remove_adjacent_border parameter
                                 )
 
                                 # Apply scaling if selected (this is separate from the initial resize)
@@ -901,7 +891,8 @@ try:
                 unsafe_allow_html=True
             )
         else:
-            preview_display_area.empty() # Clear preview area if no previews
+             # Keep the preview container visible with min-height even when empty
+             preview_display_area.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
 
 
         # Display the "Generate Full Batch" button if in preview stage
@@ -912,8 +903,11 @@ try:
                      st.session_state.generation_stage = "full_batch_generating"
                      st.session_state.full_batch_button_clicked = True # Set flag when button is clicked
                      st.rerun() # Trigger rerun to start full batch generation
+        else:
+            generate_full_batch_button_container.empty() # Hide the button if not in preview stage
 
-        # Display the download button if in completed stage
+
+        # Display the download button only if in completed stage and zip buffer exists
         if st.session_state.generation_stage == "completed" and st.session_state.zip_buffer and st.session_state.zip_buffer.getbuffer().nbytes > zipfile.sizeFileHeader + 100:
             with download_buttons_container:
                 st.download_button(
@@ -925,23 +919,7 @@ try:
                     key="download_zip",
                     disabled=False
                 )
-        elif st.session_state.generation_stage == "completed" and st.session_state.total_generations_at_start > 0:
-             # Show warning if completed but no images were successfully generated
-             with download_buttons_container:
-                  st.warning("No images were successfully generated for the ZIP. Check errors above.")
-        else:
-            # Initially disable the download button if not in completed stage or no files generated
-             with download_buttons_container:
-                 st.download_button(
-                     label=f"Download All as ZIP ({extension.upper()})",
-                     data=io.BytesIO(), # Empty data
-                     file_name=f"ColorSwatches_{output_format.lower()}.zip",
-                     mime="application/zip",
-                     use_container_width=True,
-                     key="download_zip_disabled",
-                     disabled=True, # Keep disabled
-                     help="ZIP download will be available after the full batch generation." # Tooltip added
-                 )
+        # Removed the disabled download button display in other states
 
 
     # --- Initial State/Messages when no files or positions are selected ---
@@ -956,8 +934,9 @@ try:
         generate_full_batch_button_container.empty() # Clear the button
         resize_message_container.empty() # Clear resize messages
 
-        preview_container.empty()
-        download_buttons_container.empty()
+        # Keep the preview container visible with min-height even when empty
+        preview_container.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
+        download_buttons_container.empty() # Ensure download button is hidden
         spinner_container.empty()
         preloader_and_status_container.empty()
 
@@ -967,18 +946,6 @@ try:
         elif not uploaded_files:
             st.info("Upload images to get started.")
 
-        # Ensure download button is disabled in initial state with no valid inputs
-        with download_buttons_container:
-             st.download_button(
-                 label=f"Download All as ZIP ({extension.upper()})",
-                 data=io.BytesIO(), # Empty data
-                 file_name=f"ColorSwatches_{output_format.lower()}.zip",
-                 mime="application/zip",
-                 use_container_width=True,
-                 key="download_zip_disabled_initial",
-                 disabled=True, # Keep disabled
-                 help="ZIP download will be available after the full batch generation." # Tooltip added
-             )
 
 except Exception as e:
     # --- Top-level exception handler ---
