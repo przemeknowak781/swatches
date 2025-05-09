@@ -78,7 +78,7 @@ st.markdown("""
         flex: 0 0 auto; /* Items won't grow or shrink */
         display: flex; /* Use flexbox for internal layout */
         flex-direction: column; /* Stack name, image, link vertically */
-        align-items: center; /* Center content horizontally */
+        align_items: center; /* Center content horizontally */
         text-align: center;
         width: 220px; /* Increased width for each preview item */
         box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Subtle shadow */
@@ -199,6 +199,40 @@ def shorten_filename(filename, max_len=25, front_chars=10, back_chars=10):
         back_chars_name = max(0, back_chars - len(ext))
         return f"{name[:front_chars]}...{name[-back_chars_name:]}{ext}"
     return filename
+
+def is_valid_image_header(file_bytes):
+    """
+    Checks the first few bytes of a file against known image format magic bytes.
+    Returns the detected format ('jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'ico')
+    or None if not recognized.
+    """
+    # Read the first 12 bytes (sufficient for most common formats)
+    header = file_bytes[:12]
+
+    # Common image format magic bytes
+    # JPEG: FF D8 FF DB or FF D8 FF E0 or FF D8 FF E1 (EXIF) or FF D8 FF E2 (Canon) etc.
+    if header.startswith(b'\xFF\xD8\xFF'):
+        return 'jpeg'
+    # PNG: 89 50 4E 47 0D 0A 1A 0A
+    elif header.startswith(b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
+        return 'png'
+    # GIF: 47 49 46 38 37 61 or 47 49 46 38 39 61
+    elif header.startswith(b'\x47\x49\x46\x38\x37\x61') or header.startswith(b'\x47\x49\x46\x38\x39\x61'):
+        return 'gif'
+    # BMP: 42 4D
+    elif header.startswith(b'\x42\x4D'):
+        return 'bmp'
+    # TIFF: 49 49 2A 00 or 4D 4D 00 2A
+    elif header.startswith(b'\x49\x49\x2A\x00') or header.startswith(b'\x4D\x4D\x00\x2A'):
+        return 'tiff'
+    # WEBP: 52 49 46 46 ?? ?? ?? ?? 57 45 42 50
+    elif header.startswith(b'\x52\x49\x46\x46') and header[8:12] == b'\x57\x45\x42\x50':
+        return 'webp'
+    # ICO: 00 00 01 00 (ICO) or 00 00 02 00 (CUR)
+    elif header.startswith(b'\x00\x00\x01\x00') or header.startswith(b'\x00\x00\x02\x00'):
+        return 'ico'
+
+    return None # Not recognized
 
 # --- Color Extraction ---
 
@@ -450,25 +484,37 @@ with col1:
     st.markdown('</div>', unsafe_allow_html=True) # Close the div
 
 
-    # Filter out files with unsupported extensions after upload and display warnings
+    # Filter out files with unsupported extensions and check magic bytes
     valid_files_after_upload = []
     if uploaded_files:
         # Create a set of allowed extensions (lowercase) for efficient checking
         allowed_extensions_set = set([f".{ext.lower()}" for ext in allowed_extensions])
 
         for file_obj in uploaded_files:
+             file_name = file_obj.name # Get file name here for error messages
              # --- Start broad exception handling for file access/initial processing ---
              try:
-                file_extension = os.path.splitext(file_obj.name)[1].lower()
-                # Check against the allowed extensions list
+                # Read a small portion of the file to check magic bytes
+                file_obj.seek(0) # Ensure we are at the beginning of the file
+                file_bytes_sample = file_obj.read(12) # Read first 12 bytes
+                file_obj.seek(0) # Reset file pointer to the beginning
+
+                detected_format = is_valid_image_header(file_bytes_sample)
+
+                if detected_format is None:
+                    st.warning(f"File `{file_name}` does not appear to be a valid or supported image format based on its header. Skipped.")
+                    continue # Skip this file
+
+                file_extension = os.path.splitext(file_name)[1].lower()
+                # Check against the allowed extensions list (for user message clarity)
                 if file_extension not in allowed_extensions_set:
-                     st.warning(f"`{file_obj.name}` has an unsupported extension (`{file_extension}`). Allowed extensions are: {', '.join(sorted(list(allowed_extensions_set)))}. This file will be skipped.")
-                else:
-                    valid_files_after_upload.append(file_obj)
+                     st.warning(f"`{file_name}` has an unusual or unsupported extension (`{file_extension}`). Allowed extensions are: {', '.join(sorted(list(allowed_extensions_set)))}. Processing based on detected header, but unexpected behavior may occur.")
+
+                valid_files_after_upload.append(file_obj)
 
              except Exception as e:
-                 # Catch any error during initial file object access or extension check
-                 st.error(f"An error occurred while accessing file `{file_obj.name}`: {e}. This file will be skipped.")
+                 # Catch any error during initial file object access or header check
+                 st.error(f"An error occurred while performing initial check on file `{file_name}`: {e}. This file will be skipped.")
                  continue # Skip to the next file in the loop
              # --- End broad exception handling ---
 
@@ -640,11 +686,12 @@ if uploaded_files and positions:
                     # Attempt to open and verify the image using PIL
                     try:
                         image_stream_for_verify = io.BytesIO(uploaded_file_bytes)
-                        test_image = Image.open(image_stream_for_verify)
-                        test_image.verify() # Verify image integrity
+                        image = Image.open(image_stream_for_verify)
+                        image.verify() # Verify image integrity
                         # Re-open the image stream as verify might close it
                         image_stream_for_load = io.BytesIO(uploaded_file_bytes)
                         image = Image.open(image_stream_for_load)
+
 
                     except (UnidentifiedImageError, Exception) as e:
                          st.warning(f"Could not open or verify image file: `{file_name}`. It might be corrupted or not a valid image file. Skipped.")
