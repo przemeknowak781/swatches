@@ -439,21 +439,12 @@ with col1:
 
     # Apply strobe background class to the file uploader container
     st.markdown('<div class="strobe-background">', unsafe_allow_html=True)
-    # Define allowed MIME types
-    allowed_mime_types = [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/jfif",
-        "image/bmp",
-        "image/tiff",
-        "image/x-tiff", # Include common variations
-        "image/vnd.microsoft.icon" # For .ico files
-    ]
+    # Define allowed extensions
+    allowed_extensions = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif", "ico"]
     uploaded_files = st.file_uploader(
         "Choose images",
         accept_multiple_files=True,
-        type=allowed_mime_types, # Use MIME types here
+        type=allowed_extensions, # Use extensions here
         key="file_uploader" # Added a key
     )
     st.markdown('</div>', unsafe_allow_html=True) # Close the div
@@ -463,17 +454,24 @@ with col1:
     valid_files_after_upload = []
     if uploaded_files:
         # Create a set of allowed extensions (lowercase) for efficient checking
-        # This list is now primarily for displaying informative messages
-        allowed_extensions_for_message = set([".jpg", ".jpeg", ".png", ".webp", ".jfif", ".bmp", ".tiff", ".tif", ".ico"])
+        allowed_extensions_set = set([f".{ext.lower()}" for ext in allowed_extensions])
 
         for file_obj in uploaded_files:
-            file_extension = os.path.splitext(file_obj.name)[1].lower()
-            # Check against a broader set of extensions for user message, even if MIME type allowed it
-            if file_extension not in allowed_extensions_for_message:
-                 st.warning(f"`{file_obj.name}` has an unusual or unsupported extension (`{file_extension}`). Attempting to process based on MIME type, but unexpected behavior may occur. Supported extensions are: {', '.join(sorted(list(allowed_extensions_for_message)))}.")
-                 valid_files_after_upload.append(file_obj) # Still try to process if MIME type was accepted
-            else:
-                valid_files_after_upload.append(file_obj)
+             # --- Start broad exception handling for file access/initial processing ---
+             try:
+                file_extension = os.path.splitext(file_obj.name)[1].lower()
+                # Check against the allowed extensions list
+                if file_extension not in allowed_extensions_set:
+                     st.warning(f"`{file_obj.name}` has an unsupported extension (`{file_extension}`). Allowed extensions are: {', '.join(sorted(list(allowed_extensions_set)))}. This file will be skipped.")
+                else:
+                    valid_files_after_upload.append(file_obj)
+
+             except Exception as e:
+                 # Catch any error during initial file object access or extension check
+                 st.error(f"An error occurred while accessing file `{file_obj.name}`: {e}. This file will be skipped.")
+                 continue # Skip to the next file in the loop
+             # --- End broad exception handling ---
+
         uploaded_files = valid_files_after_upload # Update uploaded_files to only include valid ones
 
 
@@ -637,7 +635,7 @@ if uploaded_files and positions:
 
                 # --- Start Exception Handling for File Processing ---
                 try:
-                    uploaded_file_bytes = file_obj.getvalue() # Use file_obj here
+                    uploaded_file_bytes = uploaded_file_obj.getvalue() # Use uploaded_file_obj here
 
                     # Attempt to open and verify the image using PIL
                     try:
