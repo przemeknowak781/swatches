@@ -243,6 +243,7 @@ if uploaded_files and positions:
                     html_block += "</div>"
                     placeholder.markdown(html_block, unsafe_allow_html=True)
 
+        placeholder.markdown("</div>", unsafe_allow_html=True)
         zip_buffer.seek(0)
 
     st.download_button(
