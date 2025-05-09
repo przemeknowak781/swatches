@@ -154,17 +154,17 @@ def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
     try:
         paletted = img.quantize(colors=num_colors, method=quantize_method)
         palette_full = paletted.getpalette()
-        if palette_full is None: # Should be rare with RGB
-            return [] # Return empty if palette extraction fails critically
+        if palette_full is None: 
+            return [] 
 
         actual_palette_colors = len(palette_full) // 3
         colors_to_extract = min(num_colors, actual_palette_colors)
         extracted_palette_rgb_values = palette_full[:colors_to_extract * 3]
         colors = [tuple(extracted_palette_rgb_values[i:i+3]) for i in range(0, len(extracted_palette_rgb_values), 3)]
         return colors
-    except Exception: # Catch broader errors during quantization
-        try: # Fallback
-            paletted = img.quantize(colors=num_colors, method=Image.FASTOCTREE) # FASTOCTREE is generally robust
+    except Exception: 
+        try: 
+            paletted = img.quantize(colors=num_colors, method=Image.FASTOCTREE) 
             palette = paletted.getpalette()
             if palette is None: return []
             colors = [tuple(palette[i:i+3]) for i in range(0, min(num_colors * 3, len(palette)), 3)]
@@ -184,16 +184,15 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
         actual_swatch_size_px = int(img_h * (swatch_size_percent / 100))
     else: 
         actual_swatch_size_px = int(img_w * (swatch_size_percent / 100))
-    actual_swatch_size_px = max(1, actual_swatch_size_px) # Ensure at least 1px
+    actual_swatch_size_px = max(1, actual_swatch_size_px) 
 
-    if not colors: # Handle gracefully if no colors extracted
+    if not colors: 
         if border > 0:
             canvas = Image.new("RGB", (img_w + 2 * border, img_h + 2 * border), border_color)
             canvas.paste(image, (border, border))
             return canvas
         return image.copy()
 
-    # Initialize variables
     swatch_width = 0; swatch_height = 0; extra_width_for_last_swatch = 0; extra_height_for_last_swatch = 0
     swatch_x_start = 0; swatch_y_start = 0; swatch_y = 0; swatch_x = 0
 
@@ -236,48 +235,58 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
     else: return image.copy()
 
     draw = ImageDraw.Draw(canvas)
-    if not colors: return canvas # Return canvas with border if no colors to draw
+    if not colors: return canvas 
 
     for i, color_tuple in enumerate(colors):
         current_swatch_width, current_swatch_height = swatch_width, swatch_height
+        x0_sw, y0_sw, x1_sw, y1_sw = 0,0,0,0 # Swatch coordinates
+
         if position in ['top', 'bottom']:
             if i == len(colors) - 1: current_swatch_width += extra_width_for_last_swatch
-            x0, x1 = swatch_x_start + i * swatch_width, swatch_x_start + i * swatch_width + current_swatch_width
-            y0, y1 = swatch_y, swatch_y + actual_swatch_size_px
-        else:
+            x0_sw = swatch_x_start + i * swatch_width
+            x1_sw = x0_sw + current_swatch_width
+            y0_sw = swatch_y
+            y1_sw = swatch_y + actual_swatch_size_px
+        else: # 'left' or 'right'
             if i == len(colors) - 1: current_swatch_height += extra_height_for_last_swatch
-            y0, y1 = swatch_y_start + i * swatch_height, swatch_y_start + i * swatch_height + current_swatch_height
-            x0, x1 = swatch_x, swatch_x + actual_swatch_size_px
+            y0_sw = swatch_y_start + i * swatch_height
+            y1_sw = y0_sw + current_swatch_height
+            x0_sw = swatch_x
+            x1_sw = swatch_x + actual_swatch_size_px
         
-        draw.rectangle([x0, y0, x1, y1], fill=tuple(color_tuple))
+        draw.rectangle([x0_sw, y0_sw, x1_sw, y1_sw], fill=tuple(color_tuple))
+        
         if swatch_border_thickness > 0:
-            is_at_top_edge = (position == 'top' and y0 == border)
-            is_at_bottom_edge = (position == 'bottom' and y1 == (canvas.height - border))
-            is_at_left_edge = (position == 'left' and x0 == border)
-            is_at_right_edge = (position == 'right' and x1 == (canvas.width - border))
+            # Determine if the swatch is at the very edge of the canvas (respecting the main image border)
+            is_at_top_edge = (position == 'top' and y0_sw == border)
+            is_at_bottom_edge = (position == 'bottom' and y1_sw == (canvas.height - border)) # y1_sw is exclusive for rect, so compare with canvas boundary
+            is_at_left_edge = (position == 'left' and x0_sw == border)
+            is_at_right_edge = (position == 'right' and x1_sw == (canvas.width - border)) # x1_sw is exclusive
 
-            # Draw outer lines of swatch unless aligned and border is zero
+            # Draw outer lines of the current swatch
+            # Top line of swatch
             if not (remove_adjacent_border and is_at_top_edge and border == 0):
-                 draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness) # Top
+                 draw.line([(x0_sw, y0_sw), (x1_sw -1 , y0_sw)], swatch_border_color, swatch_border_thickness) 
+            # Bottom line of swatch
             if not (remove_adjacent_border and is_at_bottom_edge and border == 0):
-                 draw.line([(x0, y1-swatch_border_thickness//2 if y1 > y0 else y1), (x1, y1-swatch_border_thickness//2 if y1 > y0 else y1)], fill=swatch_border_color, width=swatch_border_thickness) # Bottom (adjust for thickness)
+                 draw.line([(x0_sw, y1_sw -1), (x1_sw -1, y1_sw-1)], swatch_border_color, swatch_border_thickness)
+            # Left line of swatch
             if not (remove_adjacent_border and is_at_left_edge and border == 0):
-                 draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness) # Left
+                 draw.line([(x0_sw, y0_sw), (x0_sw, y1_sw-1)], swatch_border_color, swatch_border_thickness)
+            # Right line of swatch
             if not (remove_adjacent_border and is_at_right_edge and border == 0):
-                 draw.line([(x1-swatch_border_thickness//2 if x1 > x0 else x1), y0], [(x1-swatch_border_thickness//2 if x1 > x0 else x1), y1], fill=swatch_border_color, width=swatch_border_thickness) # Right (adjust for thickness)
+                 draw.line([(x1_sw-1, y0_sw), (x1_sw-1, y1_sw-1)], swatch_border_color, swatch_border_thickness)
 
-            # Inner borders between swatches
-            if i > 0: # Draw separator for swatches after the first one
-                if position in ['top', 'bottom']: # Vertical separator line
-                    draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-                else: # Horizontal separator line
-                    draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
+            # Inner borders between swatches (separators)
+            if i > 0: 
+                if position in ['top', 'bottom']: # Vertical separator line to the left of current swatch
+                    draw.line([(x0_sw, y0_sw), (x0_sw, y1_sw-1)], swatch_border_color, swatch_border_thickness)
+                else: # Horizontal separator line above current swatch
+                    draw.line([(x0_sw, y0_sw), (x1_sw-1, y0_sw)], swatch_border_color, swatch_border_thickness)
     return canvas
 
 # --- Input Columns ---
 col1, col2, col3 = st.columns(3)
-# Wrap columns in a div for responsive behavior if needed, or rely on Streamlit's column widths
-# st.markdown("<div class='responsive-columns'>", unsafe_allow_html=True) # If custom flex needed
 
 with col1:
     st.subheader("1. Upload Images")
@@ -331,7 +340,6 @@ with col3:
     swatch_border_color = st.color_picker("Swatch border color", "#CCCCCC", key="swatch_border_color")
     remove_adjacent_border = st.checkbox("Align swatches to image edge", value=True, key="remove_adjacent_border")
 
-# st.markdown("</div>", unsafe_allow_html=True) # Close responsive-columns div
 
 # --- Process & Preview ---
 if uploaded_files and positions:
@@ -349,8 +357,7 @@ if uploaded_files and positions:
                 try:
                     uploaded_file_bytes = uploaded_file_obj.getvalue()
                     image = Image.open(io.BytesIO(uploaded_file_bytes))
-                    image.verify() # Check for corruption
-                    # Re-open after verify
+                    image.verify() 
                     image = Image.open(io.BytesIO(uploaded_file_bytes))
                 except UnidentifiedImageError:
                     st.warning(f"Cannot identify `{uploaded_file_obj.name}`. Skipped.")
@@ -367,7 +374,6 @@ if uploaded_files and positions:
                     if image.mode not in ("RGB", "L"): image = image.convert("RGB")
                     
                     palette = extract_palette(image, num_colors, quantize_method_selected)
-                    # No warning for empty palette here, draw_layout handles it
                 except Exception as e:
                     st.error(f"Processing error for `{uploaded_file_obj.name}`: {e}. Skipped.")
                     continue
@@ -384,7 +390,6 @@ if uploaded_files and positions:
                             new_h = int(result_img.height * scale_percent / 100)
                             if new_w > 0 and new_h > 0:
                                 result_img = result_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                            # else: st.warning - too verbose
 
                         img_byte_arr = io.BytesIO()
                         base_name, _ = os.path.splitext(uploaded_file_obj.name)
@@ -403,14 +408,12 @@ if uploaded_files and positions:
                         zipf.writestr(name_for_file, img_bytes_for_download)
                         processed_images_for_zip += 1
 
-                        # For download icon overlay (data URI of the final image)
                         img_base64_for_download = base64.b64encode(img_bytes_for_download).decode("utf-8")
                         mime_type_for_download = f"image/{img_format_pil.lower()}"
                         data_uri_for_download = f"data:{mime_type_for_download};base64,{img_base64_for_download}"
 
-                        # For HTML preview thumbnail (always PNG for broad compatibility in base64)
                         preview_img_for_display = result_img.copy()
-                        preview_img_for_display.thumbnail((180, 180)) # Max width 180px
+                        preview_img_for_display.thumbnail((180, 180)) 
                         with io.BytesIO() as buffer_display:
                             preview_img_for_display.save(buffer_display, format="PNG")
                             img_base64_thumb = base64.b64encode(buffer_display.getvalue()).decode("utf-8")
@@ -427,20 +430,22 @@ if uploaded_files and positions:
                         </div>"""
                         individual_preview_html_parts.append(single_item_html)
                         
-                        # Update previews incrementally
                         current_full_html_content = "<div id='preview-zone'>" + "\n".join(individual_preview_html_parts) + "</div>"
                         preview_display_area.markdown(current_full_html_content, unsafe_allow_html=True)
 
                     except Exception as e_layout:
-                        st.error(f"Layout error for {uploaded_file_obj.name} ({pos}): {e_layout}")
+                        st.error(f"Layout error for {uploaded_file_obj.name} (pos: {pos}): {e_layout}")
+                        # Log to console for more detailed debugging if needed
+                        # print(f"Detailed layout error for {uploaded_file_obj.name} (pos: {pos}): {e_layout}", file=sys.stderr)
+                        # import traceback
+                        # print(traceback.format_exc(), file=sys.stderr)
         
         zip_buffer.seek(0)
-        spinner_container.empty() # Clear spinner
+        spinner_container.empty() 
 
-    # --- Download Button (ZIP only) ---
     with download_buttons_container:
         st.markdown("<div class='zip-download-wrapper'>", unsafe_allow_html=True)
-        if processed_images_for_zip > 0: # Check if any images were actually added to zip
+        if processed_images_for_zip > 0: 
             st.download_button(
                 label=f"⬇️ Download All as ZIP ({processed_images_for_zip} image{'s' if processed_images_for_zip > 1 else ''}, {output_format.upper()})",
                 data=zip_buffer,
@@ -449,7 +454,7 @@ if uploaded_files and positions:
                 use_container_width=True,
                 key="download_zip_main"
             )
-        elif uploaded_files and positions: # Files were uploaded, positions selected, but nothing processed
+        elif uploaded_files and positions: 
             st.warning("No images were successfully processed for download. Check error messages above.")
         st.markdown("</div>", unsafe_allow_html=True)
 
