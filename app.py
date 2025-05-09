@@ -439,25 +439,26 @@ with col1:
 
     # Apply strobe background class to the file uploader container
     st.markdown('<div class="strobe-background">', unsafe_allow_html=True)
-    allowed_types = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif"]
+    # Updated allowed_types to include more common variations
+    allowed_types = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif", "JPG", "JPEG", "PNG", "WEBP", "JFIF", "BMP", "TIFF", "TIF", "ico"]
     uploaded_files = st.file_uploader(
         "Choose images",
         accept_multiple_files=True,
-        type=allowed_types,
+        type=[ext.lower() for ext in allowed_types], # Use lowercase for the type parameter
         key="file_uploader" # Added a key
     )
     st.markdown('</div>', unsafe_allow_html=True) # Close the div
 
 
-    # Filter out files with unsupported extensions after upload
+    # Filter out files with unsupported extensions after upload and display warnings
     valid_files_after_upload = []
     if uploaded_files:
-        valid_extensions_tuple = tuple(f".{ext}" for ext in allowed_types)
+        # Create a set of allowed extensions (lowercase) for efficient checking
+        allowed_extensions_set = set([f".{ext.lower()}" for ext in allowed_types])
         for file_obj in uploaded_files:
-            # Add a check here for the actual file extension to be safe
             file_extension = os.path.splitext(file_obj.name)[1].lower()
-            if file_extension not in [f".{ext}" for ext in allowed_types]:
-                 st.warning(f"`{file_obj.name}` has an unsupported extension (`{file_extension}`). Skipped.")
+            if file_extension not in allowed_extensions_set:
+                 st.warning(f"`{file_obj.name}` has an unsupported extension (`{file_extension}`). Allowed extensions are: {', '.join(sorted(list(allowed_extensions_set)))}. This file will be skipped.")
             else:
                 valid_files_after_upload.append(file_obj)
         uploaded_files = valid_files_after_upload # Update uploaded_files to only include valid ones
