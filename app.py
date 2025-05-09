@@ -101,7 +101,21 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
 st.set_page_config(layout="wide")
 st.title("🎨 Color Swatch Generator")
 
-preview_placeholder = st.container()
+st.markdown("""
+    <style>
+    @media (min-width: 768px) {
+        .responsive-columns {
+            display: flex;
+            gap: 2rem;
+        }
+        .responsive-columns > div {
+            flex: 1;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="responsive-columns">', unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3)
 
@@ -122,6 +136,10 @@ with col3:
     swatch_border_thickness = st.slider("Swatch border thickness (px)", min_value=0, max_value=50, value=5)
     swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
     remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+preview_placeholder = st.container()
 
 if uploaded_files and positions:
     zip_buffer = io.BytesIO()
