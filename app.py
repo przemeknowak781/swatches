@@ -21,8 +21,7 @@ preview_container = st.container()
 download_buttons_container = st.container()
 # Container for the animated preloader and status text
 preloader_and_status_container = st.empty()
-# Container to display uploaded file names - Defined globally
-uploaded_files_display_container = st.empty()
+# Container to display uploaded file names - Removed this container
 
 
 # --- CSS for responsive columns and general styling ---
@@ -66,7 +65,7 @@ st.markdown("""
     .preview-item img {
         width: 100%; /* Image takes full available width within .preview-item */
         height: auto;     /* Maintain aspect ratio */
-        border-radius: 44px; /* Slightly more rounded corners for images */
+        border-radius: 4px; /* Adjusted image border radius */
         margin-bottom: 8px; /* Space below the image */
         object-fit: contain; /* Scale image to fit container while maintaining aspect ratio */
         max-height: 180px; /* Limit image height to keep preview items consistent */
@@ -101,21 +100,8 @@ st.markdown("""
     .stDownloadButton {
         margin-top: 10px;
     }
-    /* CSS for scrollable uploaded files list */
-    .uploaded-files-list-container {
-        max-height: 200px; /* Set a max height */
-        overflow-y: auto; /* Enable vertical scrolling */
-        border: 1px solid #e0e0e0;
-        border-radius: 5px;
-        padding: 10px;
-        margin-top: 10px;
-        margin-bottom: 10px; /* Add space below the list */
-    }
-    .uploaded-files-list-container p {
-        margin: 5px 0; /* Space between file names */
-        font-size: 14px;
-        color: #555;
-    }
+    /* CSS for scrollable uploaded files list - Removed this section */
+
 
     /* CSS for the animated preloader and text */
     .preloader-area {
@@ -365,16 +351,7 @@ with col1:
         uploaded_files = valid_files_after_upload
 
 
-    # Display uploaded file names in a scrollable container
-    if uploaded_files:
-        with uploaded_files_display_container.container():
-            st.markdown("<div class='uploaded-files-list-container'>", unsafe_allow_html=True)
-            st.write("Uploaded Files:")
-            for file in uploaded_files:
-                st.markdown(f"<p>- {file.name}</p>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-    else:
-        uploaded_files_display_container.empty() # Clear the container if no files are uploaded
+    # Display uploaded file names in a scrollable container - Removed this section
 
 
     st.subheader("Download Options")
@@ -589,7 +566,7 @@ elif uploaded_files and not positions:
     download_buttons_container.empty()
     spinner_container.empty()
     preloader_and_status_container.empty()
-    uploaded_files_display_container.empty() # Clear uploaded files display
+    # uploaded_files_display_container.empty() # Removed this line
 elif not uploaded_files:
     st.info("Upload images to get started.")
     # Clear previews and buttons if no files are uploaded
@@ -597,7 +574,7 @@ elif not uploaded_files:
     download_buttons_container.empty()
     spinner_container.empty()
     preloader_and_status_container.empty()
-    uploaded_files_display_container.empty() # Clear uploaded files display
+    # uploaded_files_display_container.empty() # Removed this line
 
 # Initially disable the download button if no files are uploaded or positions selected
 if not uploaded_files or not positions:
