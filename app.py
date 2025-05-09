@@ -355,16 +355,17 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
 
             # Draw borders, potentially skipping adjacent border if remove_adjacent_border is True
             # These borders are *between* swatches or between a swatch and the image edge.
-            if not (remove_adjacent_border and position == 'top' and y0 == swatch_area_y0):
+            # Corrected conditions to check against swatch_area boundaries
+            if not (remove_adjacent_border and y0 == swatch_area_y0):
                  draw.line(top_border, fill=swatch_border_color, width=swatch_border_thickness_px)
 
-            if not (remove_adjacent_border and position == 'bottom' and y1 == swatch_area_y1):
+            if not (remove_adjacent_border and y1 == swatch_area_y1):
                  draw.line(bottom_border, fill=swatch_border_color, width=swatch_border_thickness_px)
 
-            if not (remove_adjacent_border and position == 'left' and x0 == swatch_area_x0):
+            if not (remove_adjacent_border and x0 == swatch_area_x0):
                  draw.line(left_border, fill=swatch_border_color, width=swatch_border_thickness_px)
 
-            if not (remove_adjacent_border and position == 'right' and x1 == swatch_area_x1):
+            if not (remove_adjacent_border and x1 == swatch_area_x1):
                  draw.line(right_border, fill=swatch_border_color, width=swatch_border_thickness_px)
 
             # Draw internal borders between swatches
@@ -374,21 +375,6 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             else: # 'left' or 'right'
                 if i > 0: # Draw top border for swatches after the first one
                     draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness_px)
-
-    # --- Removed the code to draw the outer border around the entire swatch area ---
-    # This section is commented out or removed to achieve the flush look.
-    # if border_thickness_px > 0:
-    #     # Define the coordinates for the outer border lines of the swatch area
-    #     outer_top_border = [(swatch_area_x0, swatch_area_y0), (swatch_area_x1, swatch_area_y0)]
-    #     outer_bottom_border = [(swatch_area_x0, swatch_area_y1), (swatch_area_x1, swatch_area_y1)]
-    #     outer_left_border = [(swatch_area_x0, swatch_area_y0), (swatch_area_x0, swatch_area_y1)]
-    #     outer_right_border = [(swatch_area_x1, swatch_area_y0), (swatch_area_x1, swatch_area_y1)]
-    #
-    #     # Draw the outer borders using the main border color and thickness
-    #     draw.line(outer_top_border, fill=border_color, width=border_thickness_px)
-    #     draw.line(outer_bottom_border, fill=border_color, width=border_thickness_px)
-    #     draw.line(outer_left_border, fill=border_color, width=border_thickness_px)
-    #     draw.line(outer_right_border, fill=border_color, width=border_thickness_px)
 
 
     return canvas
