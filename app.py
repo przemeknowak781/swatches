@@ -100,8 +100,11 @@ if uploaded_files and positions:
 
     st.markdown("### Preview")
     with st.container():
-        cols = st.columns(len(preview_imgs))
-        for i, (name, img) in enumerate(preview_imgs):
-            with cols[i % len(cols)]:
+        st.markdown("<div style='display: flex; overflow-x: auto;'>", unsafe_allow_html=True)
+        for name, img in preview_imgs:
+            with st.container():
+                st.markdown(f"<div style='margin-right: 20px; text-align: center; width: 200px;'>", unsafe_allow_html=True)
                 st.caption(name)
-                st.image(img, use_column_width=True, clamp=True)
+                st.image(img, use_container_width=True, clamp=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
