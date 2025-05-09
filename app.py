@@ -622,7 +622,8 @@ try:
         st.session_state.total_generations_at_start = total_generations # Store total for later reference
 
         st.markdown("---")
-        st.subheader("Previews")
+        # Removed the "Previews" subheader
+        # st.subheader("Previews")
 
         # Initialize preview_display_area here unconditionally
         preview_display_area = preview_container.empty()
@@ -936,7 +937,22 @@ try:
 
         # Keep the preview container visible with min-height even when empty
         preview_container.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
-        download_buttons_container.empty() # Ensure download button is hidden
+        # Display the download button right after upload if files are present (even before generation)
+        if uploaded_files:
+             with download_buttons_container:
+                 st.download_button(
+                     label=f"Download All as ZIP ({extension.upper()})",
+                     data=io.BytesIO(), # Empty data initially
+                     file_name=f"ColorSwatches_{output_format.lower()}.zip",
+                     mime="application/zip",
+                     use_container_width=True,
+                     key="download_zip_initial", # Use a different key for the initial state button
+                     disabled=True, # Keep disabled until generation is complete
+                     help="Upload images and select swatch positions to enable download." # Tooltip
+                 )
+        else:
+             download_buttons_container.empty() # Ensure download button is hidden if no files
+
         spinner_container.empty()
         preloader_and_status_container.empty()
 
