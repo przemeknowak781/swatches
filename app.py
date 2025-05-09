@@ -89,7 +89,7 @@ st.markdown("""
         height: auto;     /* Maintain aspect ratio */
         border-radius: 4px; /* Adjusted image border radius */
         margin-bottom: 8px; /* Space below the image */
-        object-fit: contain; /* Scale image to fit container while maintaining aspect ratio */
+        object_fit: contain; /* Scale image to fit container while maintaining aspect ratio */
         max_height: 180px; /* Limit image height to keep preview items consistent */
     }
 
@@ -97,22 +97,22 @@ st.markdown("""
         font_size: 12px;
         margin-bottom: 5px;
         color: #333;
-        word-break: break_all; /* Break long filenames */
+        word_break: break_all; /* Break long filenames */
         height: 30px; /* Give it a fixed height to prevent layout shifts */
         overflow: hidden;
         width: 100%; /* Ensure name takes full width */
         text-overflow: ellipsis; /* Add ellipsis for long names */
-        white-space: nowrap; /* Prevent wrapping */
+        white_space: nowrap; /* Prevent wrapping */
     }
 
     /* Style for the new download link */
     .download-link {
         font_size: 10px;
         color: #888; /* Gray color */
-        text-decoration: none; /* Remove underline */
-        margin-top: 5px; /* Space above the link */
+        text_decoration: none; /* Remove underline */
+        margin_top: 5px; /* Space above the link */
         /* Added to prevent text wrapping */
-        white-space: nowrap;
+        white_space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         max_width: 100%; /* Ensure it respects the parent width */
@@ -120,18 +120,18 @@ st.markdown("""
     }
 
     .download-link:hover {
-        text-decoration: underline; /* Underline on hover */
+        text_decoration: underline; /* Underline on hover */
         color: #555;
     }
 
     /* Add some margin below subheaders for better section separation */
     h2 {
-        margin-bottom: 0.9rem !important;
+        margin_bottom: 0.9rem !important;
     }
 
     /* Ensure download buttons have some space */
     .stDownloadButton {
-        margin-top: 10px;
+        margin_top: 10px;
     }
 
     /* CSS for the animated preloader and text */
@@ -150,7 +150,7 @@ st.markdown("""
         width: 30px;
         height: 30px;
         animation: spin 1s linear infinite;
-        margin-right: 15px; /* Space between spinner and text */
+        margin_right: 15px; /* Space between spinner and text */
     }
 
     .preloader-text {
@@ -543,6 +543,9 @@ if uploaded_files and positions:
     st.markdown("---")
     st.subheader("Previews")
 
+    # Initialize preview_display_area here unconditionally
+    preview_display_area = preview_container.empty()
+
     # Determine which images/layouts to generate based on the stage
     images_to_process = []
     if st.session_state.generation_stage == "initial" and total_generations > 10:
@@ -570,7 +573,7 @@ if uploaded_files and positions:
         """, unsafe_allow_html=True)
 
         # Clear previous previews and buttons before generating
-        preview_display_area = preview_container.empty()
+        # preview_display_area = preview_container.empty() # Removed - initialized above
         download_buttons_container.empty()
         generate_full_batch_button_container.empty() # Clear button if it was there
 
