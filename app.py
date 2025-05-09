@@ -101,13 +101,12 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
 st.set_page_config(layout="wide")
 st.markdown("""
     <style>
-    .flex-container {
+    .three-col-flex {
         display: flex;
         flex-wrap: wrap;
         gap: 20px;
-        margin-top: 20px;
     }
-    .flex-item {
+    .three-col-flex > div {
         flex: 1 1 300px;
         min-width: 300px;
     }
@@ -118,35 +117,27 @@ st.title("🎨 Color Swatch Generator")
 
 preview_placeholder = st.container()
 
-col1, col2 = st.columns([1, 2])
+st.markdown('<div class="three-col-flex">', unsafe_allow_html=True)
 
-with col1:
+with st.container():
+    st.subheader("Upload Images")
     uploaded_files = st.file_uploader("Upload images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-with col2:
-    st.markdown('<div class="flex-container">', unsafe_allow_html=True)
-
-    st.markdown('<div class="flex-item">', unsafe_allow_html=True)
+with st.container():
     st.subheader("Layout Settings")
     positions = st.multiselect("Swatch position(s)", ["top", "bottom", "left", "right"], default=["bottom"])
     num_colors = st.slider("Number of swatches", min_value=2, max_value=12, value=6)
     swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="flex-item">', unsafe_allow_html=True)
-    st.subheader("Image Border")
+with st.container():
+    st.subheader("Borders")
     border_thickness = st.slider("Image border thickness (% of image width)", min_value=0, max_value=10, value=0)
     border_color = st.color_picker("Image border color", value="#FFFFFF")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="flex-item">', unsafe_allow_html=True)
-    st.subheader("Swatch Borders")
     swatch_border_thickness = st.slider("Swatch border thickness (px)", min_value=0, max_value=50, value=5)
     swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
     remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 if uploaded_files and positions:
     zip_buffer = io.BytesIO()
