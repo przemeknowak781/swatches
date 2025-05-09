@@ -126,6 +126,18 @@ with col3:
     swatch_border_color = st.color_picker("Swatch border color", "#FFFFFF")
     remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
 
+st.markdown("---")
+
+# --- Resize Options ---
+st.subheader("Download Image Size")
+resize_option = st.radio("Resize method", ["Original size", "Custom size", "Scale (%)"], index=0)
+
+if resize_option == "Custom size":
+    resize_width = st.number_input("Width (px)", min_value=50, value=800)
+    resize_height = st.number_input("Height (px)", min_value=50, value=600)
+elif resize_option == "Scale (%)":
+    scale_percent = st.slider("Scale percent", 10, 200, 100)
+
 # --- Process & Preview ---
 if uploaded_files and positions:
     with st.spinner("Generating previews..."):
@@ -144,14 +156,23 @@ if uploaded_files and positions:
                         border_color, swatch_border_color, swatch_size, remove_adjacent_border
                     )
 
+                    # Resize the image before saving
+                    if resize_option == "Custom size":
+                        result_img = result_img.resize((resize_width, resize_height), Image.LANCZOS)
+                    elif resize_option == "Scale (%)":
+                        new_w = int(result_img.width * scale_percent / 100)
+                        new_h = int(result_img.height * scale_percent / 100)
+                        result_img = result_img.resize((new_w, new_h), Image.LANCZOS)
+
                     img_byte_arr = io.BytesIO()
                     name = f"{uploaded_file.name.rsplit('.', 1)[0]}_{pos}.jpg"
                     result_img.save(img_byte_arr, format='JPEG', quality=95)
                     zipf.writestr(name, img_byte_arr.getvalue())
 
-                    result_img.thumbnail((200, 200))
+                    # Create preview image (use resized image)
+                    preview_img = result_img.copy()
                     with io.BytesIO() as buffer:
-                        result_img.save(buffer, format="PNG")
+                        preview_img.save(buffer, format="PNG")
                         img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
                     html_block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; background: #eeeeee;'>"
