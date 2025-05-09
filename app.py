@@ -41,20 +41,24 @@ def draw_layout(image, colors, position, border_thickness):
         swatch_area = (img_w + border, border, img_w + SWATCH_THICKNESS + border, img_h + border)
 
     draw = ImageDraw.Draw(canvas)
+    swatch_border = max(1, border // 10)  # border around each swatch
     if position in ['top', 'bottom']:
         swatch_width = image.width // NUM_COLORS
         for i, color in enumerate(colors):
             x0 = swatch_area[0] + i * swatch_width
             draw.rectangle([x0, swatch_area[1], x0 + swatch_width, swatch_area[3]], fill=tuple(color))
+            draw.rectangle([x0, swatch_area[1], x0 + swatch_width, swatch_area[3]], outline="black", width=swatch_border)
     else:
         swatch_height = image.height // NUM_COLORS
         for i, color in enumerate(colors):
             y0 = swatch_area[1] + i * swatch_height
             draw.rectangle([swatch_area[0], y0, swatch_area[2], y0 + swatch_height], fill=tuple(color))
+            draw.rectangle([swatch_area[0], y0, swatch_area[2], y0 + swatch_height], outline="black", width=swatch_border)
 
     return canvas
 
 # Streamlit UI
+st.set_page_config(layout="wide")
 st.title("🎨 Color Swatch Generator")
 
 uploaded_files = st.file_uploader("Upload one or more images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
@@ -70,6 +74,8 @@ border_thickness = st.slider("Border thickness (in % of image width)", min_value
 if uploaded_files and positions:
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
+        preview_imgs = []
+
         for uploaded_file in uploaded_files:
             image = Image.open(uploaded_file).convert("RGB")
             palette = extract_palette(image, NUM_COLORS)
@@ -82,9 +88,7 @@ if uploaded_files and positions:
                 result_img.save(img_byte_arr, format='JPEG', quality=95)
                 zipf.writestr(name, img_byte_arr.getvalue())
 
-                # Display preview
-                st.subheader(name)
-                st.image(result_img, use_column_width=True)
+                preview_imgs.append((name, result_img))
 
     zip_buffer.seek(0)
     st.download_button(
@@ -94,3 +98,10 @@ if uploaded_files and positions:
         mime="application/zip"
     )
 
+    st.markdown("### Preview")
+    with st.container():
+        cols = st.columns(len(preview_imgs))
+        for i, (name, img) in enumerate(preview_imgs):
+            with cols[i % len(cols)]:
+                st.caption(name)
+                st.image(img, use_column_width=True, clamp=True)
