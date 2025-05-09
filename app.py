@@ -118,6 +118,13 @@ st.markdown("""
 zip_buffer = None
 preview_html_blocks = []
 
+if preview_html_blocks:
+    st.markdown("### Preview")
+    full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>" + "
+".join(preview_html_blocks) + "</div>"
+    st.markdown(full_html, unsafe_allow_html=True)
+    st.download_button("📦 Download all as ZIP", zip_buffer, file_name="swatches.zip", mime="application/zip")
+
 st.markdown('<div class="responsive-columns">', unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3)
