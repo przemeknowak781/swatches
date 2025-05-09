@@ -34,10 +34,14 @@ if 'full_batch_button_clicked' not in st.session_state:
 # --- Global containers for dynamic content ---
 # Container for the "Generating previews..." spinner (can be removed or repurposed)
 spinner_container = st.empty() # Keeping for now, might be useful later
-# Main container for the previews and related dynamic elements
-preview_section_container = st.container()
+# Main container for the previews
+preview_container = st.container()
 # Container for download buttons (ZIP only now)
 download_buttons_container = st.container()
+# Container for the animated preloader and status text
+preloader_and_status_container = st.empty()
+# Container for the "Generate Full Batch" button
+generate_full_batch_button_container = st.empty()
 # Container for displaying image resize messages
 resize_message_container = st.empty()
 
@@ -621,13 +625,8 @@ try:
         # Removed the "Previews" subheader
         # st.subheader("Previews")
 
-        # Create placeholders for dynamic elements within the preview section
-        # This reserves space and prevents layout shifts
-        preloader_placeholder = preview_section_container.empty()
-        button_placeholder = preview_section_container.empty()
-        preview_html_placeholder = preview_section_container.empty() # Placeholder for the preview HTML
-        # resize_message_placeholder = preview_section_container.empty() # Resize messages moved to a separate container
-
+        # Initialize preview_display_area here unconditionally
+        preview_display_area = preview_container.empty()
 
         # Determine which images/layouts to generate based on the stage
         images_to_process = []
@@ -648,7 +647,7 @@ try:
 
         # Display preloader and status text if generating
         if st.session_state.generation_stage in ["initial", "full_batch_generating"] or total_generations <= 10:
-            preloader_placeholder.markdown("""
+            preloader_and_status_container.markdown("""
                 <div class='preloader-area'>
                     <div class='preloader'></div>
                     <span class='preloader-text'>Generating in progress...</span>
@@ -656,9 +655,9 @@ try:
             """, unsafe_allow_html=True)
 
             # Clear previous previews and buttons before generating
-            # preview_display_area = preview_container.empty() # Removed - initialized above
+            preview_display_area.empty() # Clear preview area
             download_buttons_container.empty()
-            button_placeholder.empty() # Clear the button placeholder
+            generate_full_batch_button_container.empty() # Clear button if it was there
             resize_message_container.empty() # Clear previous resize messages
 
 
@@ -690,7 +689,7 @@ try:
                              st.warning(f"Could not open or verify image file: `{file_name}`. It might be corrupted or not a valid image file. Skipped.")
                              current_processing_count += len(layouts_to_process) # Increment count for skipped file
                              # Update preloader text for skipped file
-                             preloader_placeholder.markdown(f"""
+                             preloader_and_status_container.markdown(f"""
                                  <div class='preloader-area'>
                                      <div class='preloader'></div>
                                      <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
@@ -705,7 +704,7 @@ try:
                             st.warning(f"`{file_name}` has an unsupported resolution ({w}x{h}). Skipped.")
                             current_processing_count += len(layouts_to_process) # Increment count for skipped file
                             # Update preloader text for skipped file
-                            preloader_placeholder.markdown(f"""
+                            preloader_and_status_container.markdown(f"""
                                 <div class='preloader-area'>
                                     <div class='preloader'></div>
                                     <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
@@ -827,7 +826,7 @@ try:
                                 current_processing_count += 1 # Increment count for successfully processed layout
 
                                 # Update preloader text with progress
-                                preloader_placeholder.markdown(f"""
+                                preloader_and_status_container.markdown(f"""
                                     <div class='preloader-area'>
                                         <div class='preloader'></div>
                                     <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
@@ -838,7 +837,7 @@ try:
                                 st.error(f"Error creating layout for {file_name} (pos: {pos}): {e_layout}")
                                 current_processing_count += len(layouts_to_process) # Increment count even if layout creation fails
                                 # Update preloader text with progress
-                                preloader_placeholder.markdown(f"""
+                                preloader_and_status_container.markdown(f"""
                                     <div class='preloader-area'>
                                         <div class='preloader'></div>
                                         <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
@@ -856,7 +855,7 @@ try:
                         st.error(f"An unexpected error occurred while processing `{file_name}`: {e}. Skipped.")
                         current_processing_count += len(layouts_to_process) # Increment count for skipped file
                         # Update preloader text for progress
-                        preloader_placeholder.markdown(f"""
+                        preloader_and_status_container.markdown(f"""
                             <div class='preloader-area'>
                                 <div class='preloader'></div>
                                 <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
@@ -876,7 +875,7 @@ try:
 
 
             # Clear preloader after processing is done
-            preloader_placeholder.empty()
+            preloader_and_status_container.empty()
 
             # Update generation stage
             if st.session_state.generation_stage == "initial" and total_generations > 10:
@@ -886,27 +885,27 @@ try:
 
 
         # --- Display Previews and Buttons based on Stage ---
-        # Display the generated previews within the placeholder
+        # Display the generated previews
         if st.session_state.preview_html_parts:
-             preview_html_placeholder.markdown(
-                 "<div id='preview-zone'>" + "\n".join(st.session_state.preview_html_parts) + "</div>",
-                 unsafe_allow_html=True
-             )
+            preview_display_area.markdown(
+                "<div id='preview-zone'>" + "\n".join(st.session_state.preview_html_parts) + "</div>",
+                unsafe_allow_html=True
+            )
         else:
-             # If no preview parts, ensure the preview HTML placeholder is empty
-             preview_html_placeholder.empty()
+            # Clear preview area if no previews
+            preview_display_area.empty()
 
 
         # Display the "Generate Full Batch" button if in preview stage
         if st.session_state.generation_stage == "preview_generated":
-            with button_placeholder:
+            with generate_full_batch_button_container:
                  # Use st.button and apply styling via CSS targeting the button element
                  if st.button("Large batch detected, do Your adjustments and click here to generate the rest!", use_container_width=True, key="generate_full_batch_button"):
                      st.session_state.generation_stage = "full_batch_generating"
                      st.session_state.full_batch_button_clicked = True # Set flag when button is clicked
                      st.rerun() # Trigger rerun to start full batch generation
         else:
-            button_placeholder.empty() # Hide the button placeholder if not in preview stage
+            generate_full_batch_button_container.empty() # Hide the button if not in preview stage
 
 
         # Display the download button only if in completed stage and zip buffer exists
@@ -927,7 +926,7 @@ try:
     # --- Initial State/Messages when no files or positions are selected ---
     else:
         # Reset state and clear displays if inputs are not valid
-        st.session_state.generation_stage = "initial"
+        st.session_stage = "initial"
         st.session_state.preview_html_parts = []
         st.session_state.generated_image_data = {}
         st.session_state.zip_buffer = None
@@ -936,8 +935,18 @@ try:
         generate_full_batch_button_container.empty() # Clear the button
         resize_message_container.empty() # Clear resize messages
 
-        # Ensure the entire preview section container is empty (collapsed) before generation
-        preview_section_container.empty()
+        # Ensure preview container is empty (collapsed) before generation
+        preview_container.empty()
+        download_buttons_container.empty() # Ensure download button is hidden
+        spinner_container.empty()
+        preloader_and_status_container.empty()
+
+
+        if uploaded_files and not positions:
+            st.info("Select at least one swatch position to generate previews and images for download.")
+        elif not uploaded_files:
+            st.info("Upload images to get started.")
+
         # Display the download button right after upload if files are present (even before generation)
         if uploaded_files:
              with download_buttons_container:
@@ -951,16 +960,6 @@ try:
                      disabled=True, # Keep disabled until generation is complete
                      help="Upload images and select swatch positions to enable download." # Tooltip
                  )
-        else:
-             download_buttons_container.empty() # Ensure download button is hidden if no files
-
-        spinner_container.empty()
-
-
-        if uploaded_files and not positions:
-            st.info("Select at least one swatch position to generate previews and images for download.")
-        elif not uploaded_files:
-            st.info("Upload images to get started.")
 
 
 except Exception as e:
