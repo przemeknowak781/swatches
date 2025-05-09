@@ -95,12 +95,10 @@ if uploaded_files and positions:
                     result_img.save(buffer, format="PNG")
                     img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-                block = f"""
-                    <div style='flex: 0 0 auto; text-align: center; width: 200px;'>
-                        <div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>
-                        <img src='data:image/png;base64,{img_base64}' width='200'>
-                    </div>
-                """
+                block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px;'>"
+                block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
+                block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
+                block += "</div>"
                 preview_html_blocks.append(block)
 
     zip_buffer.seek(0)
@@ -112,9 +110,7 @@ if uploaded_files and positions:
     )
 
     st.markdown("### Preview")
-    full_html = """
-        <div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>
-    """ + "\n".join(preview_html_blocks) + """
-        </div>
-    """
+    full_html = "<div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>"
+    full_html += "\n".join(preview_html_blocks)
+    full_html += "</div>"
     st.markdown(full_html, unsafe_allow_html=True)
