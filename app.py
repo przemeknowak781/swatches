@@ -7,11 +7,7 @@ import zipfile
 import base64
 
 # --- Reset / Clear State Button ---
-if st.button("🔄 Reset app state"):
-    st.cache_data.clear()
-    st.cache_resource.clear()
-    st.session_state.clear()
-    st.experimental_rerun()
+# (removed because Streamlit should not rely on buttons for uploader validation)
 
 # --- Page Setup ---
 st.set_page_config(layout="wide")
@@ -106,6 +102,14 @@ with col1:
         type=allowed_types,
         accept_multiple_files=True
     )
+
+    # Early validation and user feedback for invalid files
+    if uploaded_files:
+        for file in uploaded_files:
+            try:
+                Image.open(file)
+            except Exception:
+                st.warning(f"⚠️ `{file.name}` is not a valid image file and will be skipped.")
 
     st.subheader("Download Options")
     resize_option = st.radio("Resize method", ["Original size", "Scale (%)"], index=0)
