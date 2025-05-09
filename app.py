@@ -165,6 +165,9 @@ if uploaded_files and positions:
             for uploaded_file in uploaded_files:
                 try:
                     try:
+                        test_image = Image.open(uploaded_file)
+                        test_image.verify()
+                        uploaded_file.seek(0)
                         image = Image.open(uploaded_file)
                     except Exception as api_error:
                         st.warning(f"⚠️ `{uploaded_file.name}` could not be loaded due to API error. Skipped.")
