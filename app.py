@@ -17,15 +17,6 @@ spinner_container = st.empty()
 preview_container = st.container()
 download_buttons_container = st.container() # For the ZIP download button
 
-# --- SVG Icon ---
-DOWNLOAD_ICON_SVG = """
-<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-  <polyline points="7 10 12 15 17 10"/>
-  <line x1="12" y1="15" x2="12" y2="3"/>
-</svg>
-"""
-
 # --- CSS for responsive columns and general styling ---
 st.markdown(f"""
     <style>
@@ -55,7 +46,7 @@ st.markdown(f"""
         gap: 25px;        
         padding: 20px;    
         border-radius: 8px;
-        min-height: 280px; /* Increased min-height */
+        min-height: 290px; /* Adjusted min-height for download text */
         background-color: #f8f9fa; /* Subtle background */
         border: 1px dashed #dee2e6; /* Dashed border */
         margin-top: 10px; /* Space above preview zone */
@@ -63,8 +54,8 @@ st.markdown(f"""
 
     /* Styles for individual preview items */
     .preview-item {{
-        position: relative; /* For download icon positioning */
-        flex: 0 0 200px; /* Fixed width, no grow, no shrink */
+        position: relative; 
+        flex: 0 0 200px; 
         text-align: center;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
         padding: 12px; 
@@ -72,16 +63,20 @@ st.markdown(f"""
         background: #ffffff; 
         border: 1px solid #e0e0e0; 
         transition: box-shadow 0.3s ease;
+        display: flex; /* Added for flex layout of children */
+        flex-direction: column; /* Stack children vertically */
+        justify-content: space-between; /* Distribute space */
     }}
     .preview-item:hover {{
         box-shadow: 0 6px 16px rgba(0,0,0,0.15);
     }}
     .preview-item img {{
         width: 100%; 
-        max-width: 176px; /* Adjusted for padding */
+        max-width: 176px; 
         height: auto;     
         border-radius: 4px; 
         margin-bottom: 8px; 
+        align-self: center; /* Center image */
     }}
     .preview-item-name {{
         font-size: 12px;
@@ -93,31 +88,19 @@ st.markdown(f"""
         line-height: 1.3;
     }}
 
-    /* Download icon overlay */
-    .download-overlay {{
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 32px; 
-        height: 32px; 
-        background-color: rgba(0, 0, 0, 0.6); 
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0; 
-        transition: opacity 0.3s ease, background-color 0.3s ease;
-        z-index: 10;
-        cursor: pointer;
+    /* Download text link style */
+    .download-text-link {{
+        font-size: 11px;
+        color: #888; /* Lighter gray */
+        text-decoration: none;
+        display: block;
+        margin-top: 8px; /* Space above the link */
+        padding: 3px 0; /* Small padding for click area */
+        transition: color 0.2s ease;
     }}
-    .preview-item:hover .download-overlay {{
-        opacity: 1; 
-    }}
-    .download-overlay:hover {{
-        background-color: rgba(0, 0, 0, 0.8);
-    }}
-    .download-overlay svg {{
-        /* SVG styling is handled by its attributes, but can be overridden */
+    .download-text-link:hover {{
+        color: #333; /* Darker on hover */
+        text-decoration: underline;
     }}
 
     /* ZIP Download button wrapper for spacing */
@@ -125,11 +108,7 @@ st.markdown(f"""
         margin-top: 25px;
         margin-bottom: 20px;
     }}
-    /* Styling Streamlit's download button is tricky, rely on use_container_width and label */
     .zip-download-wrapper .stDownloadButton button {{
-        /* Example: these might not always apply perfectly due to Streamlit's specificity */
-        /* background-color: #007bff !important; */
-        /* color: white !important; */
         font-weight: bold !important;
     }}
     </style>
@@ -140,7 +119,6 @@ def shorten_filename(filename, name_max_len=20, front_chars=8, back_chars=7):
     """Shortens a filename for display, keeping parts of the name and the extension."""
     name_body, ext = os.path.splitext(filename)
     if len(name_body) > name_max_len:
-        # Ensure front_chars + back_chars + 3 (...) is reasonable
         if front_chars + back_chars + 3 > name_max_len :
             front_chars = max(1, (name_max_len - 3) // 2)
             back_chars = max(1, name_max_len - 3 - front_chars)
@@ -239,7 +217,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
 
     for i, color_tuple in enumerate(colors):
         current_swatch_width, current_swatch_height = swatch_width, swatch_height
-        x0_sw, y0_sw, x1_sw, y1_sw = 0,0,0,0 # Swatch coordinates
+        x0_sw, y0_sw, x1_sw, y1_sw = 0,0,0,0 
 
         if position in ['top', 'bottom']:
             if i == len(colors) - 1: current_swatch_width += extra_width_for_last_swatch
@@ -247,7 +225,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             x1_sw = x0_sw + current_swatch_width
             y0_sw = swatch_y
             y1_sw = swatch_y + actual_swatch_size_px
-        else: # 'left' or 'right'
+        else: 
             if i == len(colors) - 1: current_swatch_height += extra_height_for_last_swatch
             y0_sw = swatch_y_start + i * swatch_height
             y1_sw = y0_sw + current_swatch_height
@@ -257,31 +235,24 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
         draw.rectangle([x0_sw, y0_sw, x1_sw, y1_sw], fill=tuple(color_tuple))
         
         if swatch_border_thickness > 0:
-            # Determine if the swatch is at the very edge of the canvas (respecting the main image border)
             is_at_top_edge = (position == 'top' and y0_sw == border)
-            is_at_bottom_edge = (position == 'bottom' and y1_sw == (canvas.height - border)) # y1_sw is exclusive for rect, so compare with canvas boundary
+            is_at_bottom_edge = (position == 'bottom' and y1_sw == (canvas.height - border)) 
             is_at_left_edge = (position == 'left' and x0_sw == border)
-            is_at_right_edge = (position == 'right' and x1_sw == (canvas.width - border)) # x1_sw is exclusive
+            is_at_right_edge = (position == 'right' and x1_sw == (canvas.width - border)) 
 
-            # Draw outer lines of the current swatch
-            # Top line of swatch
             if not (remove_adjacent_border and is_at_top_edge and border == 0):
                  draw.line([(x0_sw, y0_sw), (x1_sw -1 , y0_sw)], swatch_border_color, swatch_border_thickness) 
-            # Bottom line of swatch
             if not (remove_adjacent_border and is_at_bottom_edge and border == 0):
                  draw.line([(x0_sw, y1_sw -1), (x1_sw -1, y1_sw-1)], swatch_border_color, swatch_border_thickness)
-            # Left line of swatch
             if not (remove_adjacent_border and is_at_left_edge and border == 0):
                  draw.line([(x0_sw, y0_sw), (x0_sw, y1_sw-1)], swatch_border_color, swatch_border_thickness)
-            # Right line of swatch
             if not (remove_adjacent_border and is_at_right_edge and border == 0):
                  draw.line([(x1_sw-1, y0_sw), (x1_sw-1, y1_sw-1)], swatch_border_color, swatch_border_thickness)
 
-            # Inner borders between swatches (separators)
             if i > 0: 
-                if position in ['top', 'bottom']: # Vertical separator line to the left of current swatch
+                if position in ['top', 'bottom']: 
                     draw.line([(x0_sw, y0_sw), (x0_sw, y1_sw-1)], swatch_border_color, swatch_border_thickness)
-                else: # Horizontal separator line above current swatch
+                else: 
                     draw.line([(x0_sw, y0_sw), (x1_sw-1, y0_sw)], swatch_border_color, swatch_border_thickness)
     return canvas
 
@@ -420,13 +391,13 @@ if uploaded_files and positions:
                         
                         display_name = shorten_filename(name_for_file, name_max_len=22, front_chars=10, back_chars=7)
                         
+                        # Updated HTML for preview item with text download link
                         single_item_html = f"""
                         <div class='preview-item'>
-                            <a href='{data_uri_for_download}' download='{name_for_file}' class='download-overlay' title='Download {name_for_file}'>
-                                {DOWNLOAD_ICON_SVG}
-                            </a>
-                            <img src='data:image/png;base64,{img_base64_thumb}' alt='{name_for_file}'>
-                            <div class='preview-item-name' title='{name_for_file}'>{display_name}</div>
+                            <div> <img src='data:image/png;base64,{img_base64_thumb}' alt='{name_for_file}'>
+                                <div class='preview-item-name' title='{name_for_file}'>{display_name}</div>
+                            </div>
+                            <a href='{data_uri_for_download}' download='{name_for_file}' class='download-text-link' title='Download {name_for_file}'>Download</a>
                         </div>"""
                         individual_preview_html_parts.append(single_item_html)
                         
@@ -435,10 +406,6 @@ if uploaded_files and positions:
 
                     except Exception as e_layout:
                         st.error(f"Layout error for {uploaded_file_obj.name} (pos: {pos}): {e_layout}")
-                        # Log to console for more detailed debugging if needed
-                        # print(f"Detailed layout error for {uploaded_file_obj.name} (pos: {pos}): {e_layout}", file=sys.stderr)
-                        # import traceback
-                        # print(traceback.format_exc(), file=sys.stderr)
         
         zip_buffer.seek(0)
         spinner_container.empty() 
