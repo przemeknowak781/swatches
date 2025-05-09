@@ -5,6 +5,7 @@ from sklearn.cluster import KMeans
 import io
 import zipfile
 import os
+import base64
 
 # SETTINGS
 NUM_COLORS = 6
@@ -109,12 +110,12 @@ if uploaded_files and positions:
         img_resized.thumbnail((200, 200))
         with io.BytesIO() as buffer:
             img_resized.save(buffer, format="PNG")
-            img_bytes = buffer.getvalue()
+            img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
         st.markdown(f"""
             <div style='flex: 0 0 auto; text-align: center; width: 200px;'>
                 <div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>
-                <img src='data:image/png;base64,{img_bytes.decode("latin1").encode("base64").decode()}' width='200'>
+                <img src='data:image/png;base64,{img_base64}' width='200'>
             </div>
         """, unsafe_allow_html=True)
 
