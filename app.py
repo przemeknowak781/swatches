@@ -93,3 +93,4 @@ if uploaded_files and positions:
         file_name="swatches.zip",
         mime="application/zip"
     )
+
