@@ -106,9 +106,16 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 20px;
     }
-    .three-col-flex > div {
-        flex: 1 1 300px;
-        min-width: 300px;
+    @media (min-width: 900px) {
+        .three-col-flex > div {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+    @media (max-width: 899px) {
+        .three-col-flex > div {
+            width: 100%;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
