@@ -463,6 +463,12 @@ if uploaded_files and positions:
 
             if individual_preview_html_parts:
                 full_html_content = "<div id='preview-zone'>" + "\n".join(individual_preview_html_parts) + "</div>"
+                
+                # --- DEBUG LINES ADDED ---
+                st.subheader("DEBUG: HTML Content String") 
+                st.code(full_html_content, language="html")
+                # --- END OF DEBUG LINES ---
+
                 preview_html_placeholder.markdown(full_html_content, unsafe_allow_html=True)
             elif uploaded_files and positions:
                  preview_html_placeholder.info("No previews generated. Check for error messages above.")
