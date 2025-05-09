@@ -481,14 +481,10 @@ with col3:
 
     remove_adjacent_border = st.checkbox("Align swatches with image edge", value=True, key="remove_adjacent_border")
 
-# --- Generate Button ---
-# Place the button outside the columns for better visibility
-generate_button = st.button("Generate Swatches", use_container_width=True)
-
 
 # --- Process & Preview ---
-# This block now only runs when the button is clicked
-if generate_button and uploaded_files and positions:
+# This block runs automatically when inputs change, achieving the desired restart
+if uploaded_files and positions:
     st.markdown("---")
     st.subheader("Previews")
 
@@ -694,15 +690,7 @@ if generate_button and uploaded_files and positions:
         elif uploaded_files and positions:
              st.warning("No images were generated for the ZIP. Check errors above.")
 
-# --- Initial State/Messages when button is not clicked ---
-elif uploaded_files and positions and not generate_button:
-     st.info("Adjust settings and click 'Generate Swatches' to see previews.")
-     # Clear previous previews and buttons if settings change and button is not clicked
-     preview_container.empty()
-     download_buttons_container.empty()
-     spinner_container.empty()
-     preloader_and_status_container.empty()
-
+# --- Initial State/Messages when no files or positions are selected ---
 elif uploaded_files and not positions:
     st.info("Select at least one swatch position to generate previews and images for download.")
     # Clear previous previews and buttons if settings change and no positions are selected
@@ -719,8 +707,8 @@ elif not uploaded_files:
     spinner_container.empty()
     preloader_and_status_container.empty()
 
-# Initially disable the download button if no files are uploaded or positions selected or button not clicked
-if not uploaded_files or not positions or not generate_button:
+# Initially disable the download button if no files are uploaded or positions selected
+if not uploaded_files or not positions:
      with download_buttons_container:
          st.download_button(
              label=f"Download All as ZIP ({extension.upper()})",
