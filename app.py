@@ -19,14 +19,14 @@ def extract_palette(image, num_colors=6):
     return kmeans.cluster_centers_.astype(int)
 
 # Drawing function
-def draw_layout(image, colors, position, border_thickness):
+def draw_layout(image, colors, position, border_thickness, swatch_border_thickness, border_color, swatch_border_color):
     img_w, img_h = image.size
     border = border_thickness
 
     if position in ['top', 'bottom']:
-        canvas = Image.new("RGB", (img_w + 2*border, img_h + SWATCH_THICKNESS + 2*border), "white")
+        canvas = Image.new("RGB", (img_w + 2*border, img_h + SWATCH_THICKNESS + 2*border), border_color)
     else:
-        canvas = Image.new("RGB", (img_w + SWATCH_THICKNESS + 2*border, img_h + 2*border), "white")
+        canvas = Image.new("RGB", (img_w + SWATCH_THICKNESS + 2*border, img_h + 2*border), border_color)
 
     if position == 'top':
         canvas.paste(image, (border, SWATCH_THICKNESS + border))
@@ -42,19 +42,18 @@ def draw_layout(image, colors, position, border_thickness):
         swatch_area = (img_w + border, border, img_w + SWATCH_THICKNESS + border, img_h + border)
 
     draw = ImageDraw.Draw(canvas)
-    swatch_border = max(1, border // 10)  # border around each swatch
     if position in ['top', 'bottom']:
         swatch_width = image.width // NUM_COLORS
         for i, color in enumerate(colors):
             x0 = swatch_area[0] + i * swatch_width
             draw.rectangle([x0, swatch_area[1], x0 + swatch_width, swatch_area[3]], fill=tuple(color))
-            draw.rectangle([x0, swatch_area[1], x0 + swatch_width, swatch_area[3]], outline="black", width=swatch_border)
+            draw.rectangle([x0, swatch_area[1], x0 + swatch_width, swatch_area[3]], outline=swatch_border_color, width=swatch_border_thickness)
     else:
         swatch_height = image.height // NUM_COLORS
         for i, color in enumerate(colors):
             y0 = swatch_area[1] + i * swatch_height
             draw.rectangle([swatch_area[0], y0, swatch_area[2], y0 + swatch_height], fill=tuple(color))
-            draw.rectangle([swatch_area[0], y0, swatch_area[2], y0 + swatch_height], outline="black", width=swatch_border)
+            draw.rectangle([swatch_area[0], y0, swatch_area[2], y0 + swatch_height], outline=swatch_border_color, width=swatch_border_thickness)
 
     return canvas
 
@@ -71,6 +70,9 @@ positions = st.multiselect(
 )
 
 border_thickness = st.slider("Border thickness (in % of image width)", min_value=1, max_value=10, value=2)
+swatch_border_thickness = st.slider("Swatch border thickness (in px)", min_value=0, max_value=10, value=1)
+border_color = st.color_picker("Image border color", value="#FFFFFF")
+swatch_border_color = st.color_picker("Swatch border color", value="#000000")
 
 if uploaded_files and positions:
     zip_buffer = io.BytesIO()
@@ -83,7 +85,7 @@ if uploaded_files and positions:
             border_px = int(image.width * (border_thickness / 100))
 
             for pos in positions:
-                result_img = draw_layout(image, palette, pos, border_px)
+                result_img = draw_layout(image, palette, pos, border_px, swatch_border_thickness, border_color, swatch_border_color)
                 img_byte_arr = io.BytesIO()
                 name = f"{uploaded_file.name.rsplit('.', 1)[0]}_{pos}.jpg"
                 result_img.save(img_byte_arr, format='JPEG', quality=95)
@@ -95,7 +97,7 @@ if uploaded_files and positions:
                     result_img.save(buffer, format="PNG")
                     img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-                block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px;'>"
+                block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; background: white;'>"
                 block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
                 block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
                 block += "</div>"
