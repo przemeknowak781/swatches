@@ -238,14 +238,12 @@ if uploaded_files and positions:
                     html_block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
                     html_block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
                     html_block += "</div>"
-                    preview_html_blocks.append(html_block)
+                    placeholder = preview_container.container()
+                    placeholder.markdown(html_block, unsafe_allow_html=True)
 
         zip_buffer.seek(0)
 
-        with preview_container:
-            st.markdown("### Preview")
-            full_html = "<div style='display: flex; overflow-x: auto; gap: 30px; padding: 20px;'>" + "\n".join(preview_html_blocks) + "</div>"
-            st.markdown(full_html, unsafe_allow_html=True)
+        
             st.download_button(
                 f"📦 Download all as ZIP ({extension.upper()})",
                 zip_buffer,
