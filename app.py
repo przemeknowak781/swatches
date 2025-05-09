@@ -16,7 +16,7 @@ st.title("Color Swatch Generator")
 spinner_container = st.empty()
 # Main container for the previews
 preview_container = st.container()
-# Container for download buttons
+# Container for download buttons (ZIP only now)
 download_buttons_container = st.container()
 
 
@@ -37,17 +37,20 @@ st.markdown("""
         display: flex;
         flex-wrap: nowrap; /* Prevents wrapping, enables scrolling */
         overflow-x: auto; /* Enables horizontal scrolling */
-        gap: 30px;        /* Gap between preview items */
+        gap: 20px;        /* Adjusted gap between preview items */
         padding: 20px;    /* Inner padding for the preview zone */
         border-radius: 8px;
-        /* background-color: #f9f9f9; /* Optional light background for the zone */
         min-height: 250px; /* Ensure it has some height even when empty */
+        align-items: flex-start; /* Align items to the top */
     }
     /* Styles for individual preview items */
     .preview-item {
         flex: 0 0 auto; /* Items won't grow or shrink */
+        display: flex; /* Use flexbox for internal layout */
+        flex-direction: column; /* Stack name, image, link vertically */
+        align-items: center; /* Center content horizontally */
         text-align: center;
-        width: 200px; /* Fixed width for each preview item */
+        width: 220px; /* Increased width for each preview item */
         box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Subtle shadow */
         padding: 10px; /* Inner padding for the item */
         border-radius: 8px;
@@ -56,10 +59,11 @@ st.markdown("""
     }
     .preview-item img {
         width: 100%; /* Image takes full available width within .preview-item */
-        max-width: 180px; /* Max image width to leave some padding */
         height: auto;     /* Maintain aspect ratio */
         border-radius: 4px;
         margin-bottom: 8px; /* Space below the image */
+        object-fit: contain; /* Scale image to fit container while maintaining aspect ratio */
+        max-height: 180px; /* Limit image height to keep preview items consistent */
     }
     .preview-item-name {
         font-size: 12px;
@@ -68,6 +72,20 @@ st.markdown("""
         word-break: break-all; /* Break long filenames */
         height: 30px; /* Give it a fixed height to prevent layout shifts */
         overflow: hidden;
+        width: 100%; /* Ensure name takes full width */
+        text-overflow: ellipsis; /* Add ellipsis for long names */
+        white-space: nowrap; /* Prevent wrapping */
+    }
+    /* Style for the new download link */
+    .download-link {
+        font-size: 10px;
+        color: #888; /* Gray color */
+        text-decoration: none; /* Remove underline */
+        margin-top: 5px; /* Space above the link */
+    }
+    .download-link:hover {
+        text-decoration: underline; /* Underline on hover */
+        color: #555;
     }
     /* Add some margin below subheaders for better section separation */
     h2 {
@@ -81,10 +99,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Utility Functions ---
-def shorten_filename(filename, max_len=20, front_chars=8, back_chars=8):
+def shorten_filename(filename, max_len=25, front_chars=10, back_chars=10):
     """Shortens a filename to fit max_len, keeping front_chars and back_chars."""
     if len(filename) > max_len:
-        return f"{filename[:front_chars]}...{filename[-(back_chars + len(os.path.splitext(filename)[1])):]}{os.path.splitext(filename)[1]}"
+        # Find the extension
+        name, ext = os.path.splitext(filename)
+        # Calculate chars from the back excluding extension
+        back_chars_name = max(0, back_chars - len(ext))
+        return f"{name[:front_chars]}...{name[-back_chars_name:]}{ext}"
     return filename
 
 # --- Color Extraction ---
@@ -92,13 +114,15 @@ def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
     """Extracts a color palette from the image."""
     img = image.convert("RGB")
     try:
-        paletted = img.quantize(colors=num_colors, method=quantize_method)
+        # Attempt with the selected method
+        paletted = img.quantize(colors=num_colors, method=quantize_method, kmeans=5) # Added kmeans for potentially better results
         palette_full = paletted.getpalette()
         if palette_full is None:
-            paletted = img.quantize(colors=num_colors, method=quantize_method)
+             # Fallback if getpalette returns None immediately
+            paletted = img.quantize(colors=num_colors, method=Image.FASTOCTREE, kmeans=5)
             palette_full = paletted.getpalette()
             if palette_full is None:
-                return []
+                 return []
 
         actual_palette_colors = len(palette_full) // 3
         colors_to_extract = min(num_colors, actual_palette_colors)
@@ -106,15 +130,15 @@ def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
         colors = [tuple(extracted_palette_rgb_values[i:i+3]) for i in range(0, len(extracted_palette_rgb_values), 3)]
         return colors
     except Exception as e:
-        # st.warning(f"Error during quantization ({e}). Using fallback method (FASTOCTREE).") # Less verbose
+        # If the selected method fails, try FASTOCTREE as a fallback
         try:
-            paletted = img.quantize(colors=num_colors, method=Image.FASTOCTREE)
+            paletted = img.quantize(colors=num_colors, method=Image.FASTOCTREE, kmeans=5)
             palette = paletted.getpalette()
             if palette is None: return []
             colors = [tuple(palette[i:i+3]) for i in range(0, min(num_colors * 3, len(palette)), 3)]
             return colors
         except Exception:
-            # st.error(f"Error during fallback quantization: {e_fallback}") # Less verbose
+            # If fallback also fails, return empty list
             return []
 
 
@@ -127,11 +151,10 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
 
     # Calculate actual swatch size in pixels based on percentage
     if position in ['top', 'bottom']:
-        # Base swatch size on image height for horizontal swatches for consistency, or width if preferred
-        # Using image height as the reference for swatch thickness
+        # Base swatch size on image height for horizontal swatches
         actual_swatch_size_px = int(img_h * (swatch_size_percent / 100))
     else: # 'left', 'right'
-        # Using image width as the reference for swatch thickness
+        # Base swatch size on image width for vertical swatches
         actual_swatch_size_px = int(img_w * (swatch_size_percent / 100))
 
     if actual_swatch_size_px <= 0 : # Ensure swatch size is at least 1px if calculated to 0
@@ -139,11 +162,12 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
 
 
     if not colors:
+        # If no colors extracted, just add the border if requested
         if border > 0:
             canvas = Image.new("RGB", (img_w + 2 * border, img_h + 2 * border), border_color)
             canvas.paste(image, (border, border))
             return canvas
-        return image.copy()
+        return image.copy() # Return original image if no colors and no border
 
     swatch_width = 0
     swatch_height = 0
@@ -154,6 +178,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
     swatch_y = 0
     swatch_x = 0
 
+    # Determine canvas size and image paste position based on swatch position
     if position == 'top':
         canvas_h = img_h + actual_swatch_size_px + 2 * border
         canvas_w = img_w + 2 * border
@@ -166,7 +191,7 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             swatch_width = swatch_total_width // len(colors)
             extra_width_for_last_swatch = swatch_total_width % len(colors)
         else:
-            swatch_width = swatch_total_width
+            swatch_width = swatch_total_width # Should not happen if colors is not empty
 
     elif position == 'bottom':
         canvas_h = img_h + actual_swatch_size_px + 2 * border
@@ -210,14 +235,16 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
         else:
             swatch_height = swatch_total_height
     else:
-        return image.copy()
+        return image.copy() # Should not happen with valid positions
 
     draw = ImageDraw.Draw(canvas)
 
+    # Draw the color swatches
     for i, color_tuple in enumerate(colors):
         current_swatch_width = swatch_width
         current_swatch_height = swatch_height
 
+        # Adjust last swatch size to fill the remaining space
         if position in ['top', 'bottom']:
             if i == len(colors) - 1:
                 current_swatch_width += extra_width_for_last_swatch
@@ -233,29 +260,35 @@ def draw_layout(image, colors, position, border_thickness_px, swatch_border_thic
             x0 = swatch_x
             x1 = swatch_x + actual_swatch_size_px # Use calculated actual_swatch_size_px
 
+        # Draw the swatch rectangle
         draw.rectangle([x0, y0, x1, y1], fill=tuple(color_tuple))
 
+        # Draw swatch borders if thickness > 0
         if swatch_border_thickness > 0:
-            is_at_top_edge = (position == 'top' and y0 == border)
-            is_at_bottom_edge = (position == 'bottom' and y1 == (canvas.height - border))
-            is_at_left_edge = (position == 'left' and x0 == border)
-            is_at_right_edge = (position == 'right' and x1 == (canvas.width - border))
+            # Define border coordinates
+            top_border = [(x0, y0), (x1, y0)]
+            bottom_border = [(x0, y1), (x1, y1)]
+            left_border = [(x0, y0), (x0, y1)]
+            right_border = [(x1, y0), (x1, y1)]
 
-            if not (remove_adjacent_border and is_at_top_edge and border == 0):
-                 draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
-            if not (remove_adjacent_border and is_at_bottom_edge and border == 0):
-                 draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            if not (remove_adjacent_border and is_at_left_edge and border == 0):
-                 draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            if not (remove_adjacent_border and is_at_right_edge and border == 0):
-                 draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            # Draw borders, potentially skipping adjacent border if remove_adjacent_border is True
+            if not (remove_adjacent_border and position == 'top' and y0 == border):
+                 draw.line(top_border, fill=swatch_border_color, width=swatch_border_thickness)
+            if not (remove_adjacent_border and position == 'bottom' and y1 == (canvas.height - border)):
+                 draw.line(bottom_border, fill=swatch_border_color, width=swatch_border_thickness)
+            if not (remove_adjacent_border and position == 'left' and x0 == border):
+                 draw.line(left_border, fill=swatch_border_color, width=swatch_border_thickness)
+            if not (remove_adjacent_border and position == 'right' and x1 == (canvas.width - border)):
+                 draw.line(right_border, fill=swatch_border_color, width=swatch_border_thickness)
 
+            # Draw internal borders between swatches
             if position in ['top', 'bottom']:
-                if i > 0:
+                if i > 0: # Draw left border for swatches after the first one
                     draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            else:
-                if i > 0:
+            else: # 'left' or 'right'
+                if i > 0: # Draw top border for swatches after the first one
                     draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
+
     return canvas
 
 # --- Input Columns ---
@@ -338,16 +371,13 @@ with col3:
 if uploaded_files and positions:
     st.markdown("---")
     st.subheader("Previews")
-    
+
     # Move spinner here, under the "Previews" header
     with spinner_container, st.spinner("Generating previews..."):
         preview_display_area = preview_container.empty() # Prepare the area for previews
-        
+
         individual_preview_html_parts = []
         zip_buffer = io.BytesIO()
-        
-        # Store data for individual downloads
-        individual_file_data = [] 
 
         # Use compresslevel=0 (ZIP_STORED) for speed, as images are already compressed.
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, compresslevel=0) as zipf:
@@ -399,7 +429,7 @@ if uploaded_files and positions:
                                 st.warning(f"Cannot resize {uploaded_file_obj.name}_{pos}. Using original size.")
 
                         img_byte_arr = io.BytesIO()
-                        base_name, 작업_확장자 = os.path.splitext(uploaded_file_obj.name) # Use os.path.splitext
+                        base_name, original_extension = os.path.splitext(uploaded_file_obj.name) # Use os.path.splitext
                         safe_base_name = "".join(c if c.isalnum() or c in (' ', '.', '_', '-') else '_' for c in base_name).rstrip()
                         name_for_file = f"{safe_base_name}_{pos}.{extension}" # Consistent naming
 
@@ -411,92 +441,64 @@ if uploaded_files and positions:
                                 save_params['lossless'] = True
                                 save_params['quality'] = 100
 
+                        # Save the full-size image for download
                         result_img.save(img_byte_arr, format=img_format, **save_params)
-                        img_bytes_for_download = img_byte_arr.getvalue() # Get bytes for individual download and ZIP
+                        img_bytes_for_download = img_byte_arr.getvalue()
 
+                        # Add to ZIP file
                         zipf.writestr(name_for_file, img_bytes_for_download)
-                        
-                        # Add to list for individual downloads
-                        individual_file_data.append({"name": name_for_file, "data": img_bytes_for_download, "mime": f"image/{extension}"})
 
-
+                        # Create a thumbnail for the preview
                         preview_img_for_display = result_img.copy()
-                        preview_img_for_display.thumbnail((180, 180))
+                        # Resize thumbnail to fit the preview item width, maintaining aspect ratio
+                        preview_img_for_display.thumbnail((200, 200)) # Adjusted thumbnail size
                         with io.BytesIO() as buffer_display:
+                            # Save preview thumbnail as PNG for consistent display
                             preview_img_for_display.save(buffer_display, format="PNG")
                             img_base64 = base64.b64encode(buffer_display.getvalue()).decode("utf-8")
-                        
+
+                        # Encode the full-size image for the download link
+                        img_base64_download = base64.b64encode(img_bytes_for_download).decode("utf-8")
+                        download_mime_type = f"image/{extension}" # Mime type for the download link
+
                         # Shorten filename for display
                         display_name = shorten_filename(name_for_file, max_len=25, front_chars=10, back_chars=10)
 
+                        # Construct HTML for individual preview item with download link
                         single_item_html = f"<div class='preview-item'>"
                         single_item_html += f"<div class='preview-item-name' title='{name_for_file}'>{display_name}</div>" # Add full name as title
                         single_item_html += f"<img src='data:image/png;base64,{img_base64}' alt='Preview of {name_for_file}'>"
+                        # Add the download link
+                        single_item_html += f"<a href='data:{download_mime_type};base64,{img_base64_download}' download='{name_for_file}' class='download-link'>Download</a>"
                         single_item_html += "</div>"
                         individual_preview_html_parts.append(single_item_html)
 
+                        # Update the preview area dynamically
                         current_full_html_content = ("<div id='preview-zone'>" + "\n".join(individual_preview_html_parts) + "</div>")
                         preview_display_area.markdown(current_full_html_content, unsafe_allow_html=True)
+
                     except Exception as e_layout:
                         st.error(f"Error creating layout for {uploaded_file_obj.name} (pos: {pos}): {e_layout}")
-        
+
         zip_buffer.seek(0)
         # Clear spinner after processing is done
         spinner_container.empty()
 
 
-    # --- Download Buttons (Moved under "Previews" section) ---
+    # --- Download Buttons (Only ZIP now) ---
     with download_buttons_container: # Use the dedicated container
-        if individual_file_data: # Check if there's anything to download
-            col_zip, col_individual = st.columns(2) # Create two columns for the buttons
-
-            with col_zip:
-                if zip_buffer.getbuffer().nbytes > zipfile.sizeFileHeader + 100: # Check if ZIP has content
-                    st.download_button(
-                        label=f"Download All as ZIP ({extension.upper()})",
-                        data=zip_buffer,
-                        file_name=f"ColorSwatches_{output_format.lower()}.zip",
-                        mime="application/zip",
-                        use_container_width=True,
-                        key="download_zip"
-                    )
-                elif uploaded_files and positions:
-                    st.warning("No images were generated for the ZIP. Check errors.")
-            
-            with col_individual:
-                # For "Download as separate files", we'll provide one button per file.
-                # This can be overwhelming if many files. A more advanced solution might involve JS.
-                # For now, let's just show a message or a limited number of buttons.
-                # A simple approach: if there are files, enable a button that then lists them.
-                # Or directly list download buttons if not too many.
-                
-                # Let's try to display individual download buttons directly if there are files.
-                # This might get crowded if many files are generated.
-                # We will show them in an expander to keep the UI clean.
-                if individual_file_data:
-                    with st.expander("Download Individual Files", expanded=False):
-                        st.caption(f"Click to download each generated image ({len(individual_file_data)} total).")
-                        # Create a grid for individual download buttons if many
-                        max_cols = 3 # Number of columns for download buttons
-                        cols = st.columns(max_cols)
-                        col_idx = 0
-                        for i, file_info in enumerate(individual_file_data):
-                            button_label_short = shorten_filename(file_info['name'], max_len=20, front_chars=7, back_chars=7)
-                            cols[col_idx].download_button(
-                                label=f"DL: {button_label_short}", # DL for Download
-                                data=file_info['data'],
-                                file_name=file_info['name'],
-                                mime=file_info['mime'],
-                                key=f"download_individual_{i}",
-                                help=f"Download {file_info['name']}"
-                            )
-                            col_idx = (col_idx + 1) % max_cols
-                        if not individual_file_data:
-                             st.write("No individual files to download.")
-
-
-        elif uploaded_files and positions :
-             st.warning("No images were generated for download. Check error messages above.")
+        # Check if there's anything in the zip buffer beyond the header
+        if zip_buffer.getbuffer().nbytes > zipfile.sizeFileHeader + 100:
+            st.download_button(
+                label=f"Download All as ZIP ({extension.upper()})",
+                data=zip_buffer,
+                file_name=f"ColorSwatches_{output_format.lower()}.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="download_zip"
+            )
+        elif uploaded_files and positions:
+             st.warning("No images were generated for the ZIP. Check errors above.")
 
 
 elif uploaded_files and not positions:
