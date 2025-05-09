@@ -244,18 +244,10 @@ if uploaded_files and positions:
                     preview_html_blocks.append(html_block)
 
         full_html = (
-            """
-            <style>
-            #preview-zone {
-                display: flex;
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                gap: 30px;
-                padding: 20px;
-            }
-            </style>
-            <div id='preview-zone'>
-            """
+            "<style>"
+            "#preview-zone { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 30px; padding: 20px; }"
+            "</style>"
+            "<div id='preview-zone'>"
             + "\n".join(preview_html_blocks) +
             "</div>"
         )
