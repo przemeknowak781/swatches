@@ -164,10 +164,7 @@ with col3:
 # --- Processing & Preview ---
 if uploaded_files and positions:
     with st.spinner("Generating previews, please wait..."):
-        with preview_container:
-            st.markdown("""
-            <div style='text-align: center; font-size: 24px; font-weight: bold; margin-top: 30px;'>⏳ Please wait, generating...</div>
-            """, unsafe_allow_html=True)
+        
 """, unsafe_allow_html=True)
 with st.spinner("Generating previews, please wait..."):
         zip_buffer = io.BytesIO()
