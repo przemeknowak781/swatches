@@ -128,18 +128,17 @@ with col2:
     
     positions = []
 st.write("Swatch position(s):")
-pos_row1 = st.columns(2)
-pos_row2 = st.columns(2)
-with pos_row1[0]:
+toggle_cols = st.columns(4)
+with toggle_cols[0]:
     if st.toggle("Top", key="pos_top"):
         positions.append("top")
-with pos_row1[1]:
+with toggle_cols[1]:
     if st.toggle("Left", key="pos_left"):
         positions.append("left")
-with pos_row2[0]:
+with toggle_cols[2]:
     if st.toggle("Bottom", value=True, key="pos_bottom"):
         positions.append("bottom")
-with pos_row2[1]:
+with toggle_cols[3]:
     if st.toggle("Right", key="pos_right"):
         positions.append("right")
 
