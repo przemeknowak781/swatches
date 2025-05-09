@@ -99,12 +99,16 @@ if uploaded_files and positions:
     )
 
     st.markdown("### Preview")
-    with st.container():
-        st.markdown("<div style='display: flex; overflow-x: auto;'>", unsafe_allow_html=True)
-        for name, img in preview_imgs:
-            with st.container():
-                st.markdown(f"<div style='margin-right: 20px; text-align: center; width: 200px;'>", unsafe_allow_html=True)
-                st.caption(name)
-                st.image(img, use_container_width=True, clamp=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("""
+        <div style='display: flex; overflow-x: auto; gap: 20px; padding: 10px;'>
+    """, unsafe_allow_html=True)
+
+    for name, img in preview_imgs:
+        st.markdown("""
+            <div style='flex: 0 0 auto; text-align: center; width: 200px;'>
+        """, unsafe_allow_html=True)
+        st.caption(name)
+        st.image(img, use_container_width=True, clamp=True)
         st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
