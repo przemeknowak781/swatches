@@ -467,513 +467,536 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
 # --- Input Columns ---
 col1, col2, col3 = st.columns(3)
 
-with col1:
-    # Revert to standard subheader
-    st.subheader("Upload Images")
+# --- Top-level exception handling ---
+try:
+    with col1:
+        # Revert to standard subheader
+        st.subheader("Upload Images")
 
-    # Apply strobe background class to the file uploader container
-    st.markdown('<div class="strobe-background">', unsafe_allow_html=True)
-    # Define allowed extensions
-    allowed_extensions = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif", "ico"]
-    uploaded_files = st.file_uploader(
-        "Choose images",
-        accept_multiple_files=True,
-        type=allowed_extensions, # Use extensions here
-        key="file_uploader" # Added a key
-    )
-    st.markdown('</div>', unsafe_allow_html=True) # Close the div
-
-
-    # Filter out files with unsupported extensions and check magic bytes
-    valid_files_after_upload = []
-    if uploaded_files:
-        # Create a set of allowed extensions (lowercase) for efficient checking
-        allowed_extensions_set = set([f".{ext.lower()}" for ext in allowed_extensions])
-
-        for file_obj in uploaded_files:
-             file_name = file_obj.name # Get file name here for error messages
-             # --- Start broad exception handling for file access/initial processing ---
-             try:
-                # Read a small portion of the file to check magic bytes
-                file_obj.seek(0) # Ensure we are at the beginning of the file
-                file_bytes_sample = file_obj.read(12) # Read first 12 bytes
-                file_obj.seek(0) # Reset file pointer to the beginning
-
-                detected_format = is_valid_image_header(file_bytes_sample)
-
-                if detected_format is None:
-                    st.warning(f"File `{file_name}` does not appear to be a valid or supported image format based on its header. Skipped.")
-                    continue # Skip this file
-
-                file_extension = os.path.splitext(file_name)[1].lower()
-                # Check against the allowed extensions list (for user message clarity)
-                if file_extension not in allowed_extensions_set:
-                     st.warning(f"`{file_name}` has an unusual or unsupported extension (`{file_extension}`). Allowed extensions are: {', '.join(sorted(list(allowed_extensions_set)))}. Processing based on detected header, but unexpected behavior may occur.")
-
-                valid_files_after_upload.append(file_obj)
-
-             except Exception as e:
-                 # Catch any error during initial file object access or header check
-                 st.error(f"An error occurred while performing initial check on file `{file_name}`: {e}. This file will be skipped.")
-                 continue # Skip to the next file in the loop
-             # --- End broad exception handling ---
-
-        uploaded_files = valid_files_after_upload # Update uploaded_files to only include valid ones
+        # Apply strobe background class to the file uploader container
+        st.markdown('<div class="strobe-background">', unsafe_allow_html=True)
+        # Define allowed extensions
+        allowed_extensions = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif", "ico"]
+        uploaded_files = st.file_uploader(
+            "Choose images",
+            accept_multiple_files=True,
+            type=allowed_extensions, # Use extensions here
+            key="file_uploader" # Added a key
+        )
+        st.markdown('</div>', unsafe_allow_html=True) # Close the div
 
 
-    st.subheader("Download Options")
-    resize_option = st.radio("Resize method", ["Original size", "Scale (%)"], index=0, key="resize_option")
-    scale_percent = 100
-    if resize_option == "Scale (%)":
-        scale_percent = st.slider("Scale percent", 10, 200, 100, key="scale_percent")
+        # Filter out files with unsupported extensions and check magic bytes
+        valid_files_after_upload = []
+        if uploaded_files:
+            # Create a set of allowed extensions (lowercase) for efficient checking
+            allowed_extensions_set = set([f".{ext.lower()}" for ext in allowed_extensions])
 
-    output_format_options = ["JPG", "PNG", "WEBP"]
-    output_format = st.selectbox("Output format", output_format_options, key="output_format")
+            for file_obj in uploaded_files:
+                 file_name = file_obj.name # Get file name here for error messages
+                 # --- Start broad exception handling for file access/initial processing ---
+                 try:
+                    # Read a small portion of the file to check magic bytes
+                    file_obj.seek(0) # Ensure we are at the beginning of the file
+                    file_bytes_sample = file_obj.read(12) # Read first 12 bytes
+                    file_obj.seek(0) # Reset file pointer to the beginning
 
-    webp_lossless = False
-    if output_format == "WEBP":
-        webp_lossless = st.checkbox("Lossless WEBP", value=False, key="webp_lossless", help="Generates larger files, but with better quality.")
+                    detected_format = is_valid_image_header(file_bytes_sample)
 
-    format_map = {
-        "JPG": ("JPEG", "jpg"),
-        "PNG": ("PNG", "png"),
-        "WEBP": ("WEBP", "webp")
-    }
-    img_format, extension = format_map[output_format]
-
-
-with col2:
-    st.subheader("Layout Settings")
-    positions = []
-    st.write("Swatch position(s) (multiple can be selected):")
-
-    # Use columns for layout toggles
-    row1_layout = st.columns(2)
-    row2_layout = st.columns(2)
-
-    if row1_layout[0].toggle("Top", key="pos_top"): positions.append("top")
-    if row1_layout[1].toggle("Left", key="pos_left"): positions.append("left")
-    # Default 'bottom' to True as requested
-    if row2_layout[0].toggle("Bottom", value=True, key="pos_bottom"): positions.append("bottom")
-    if row2_layout[1].toggle("Right", key="pos_right"): positions.append("right")
-
-
-    quant_method_label = st.selectbox(
-        "Palette extraction method",
-        ["MEDIANCUT", "MAXCOVERAGE", "FASTOCTREE"],
-        index=0, key="quant_method",
-        help="MEDIANCUT: Good general results. MAXCOVERAGE: Can be slower. FASTOCTREE: Faster."
-    )
-    quant_method_map = {"MEDIANCUT": Image.MEDIANCUT, "MAXCOVERAGE": Image.MAXCOVERAGE, "FASTOCTREE": Image.FASTOCTREE}
-    quantize_method_selected = quant_method_map[quant_method_label]
-
-    num_colors = st.slider("Number of swatches", 2, 12, 6, key="num_colors")
-
-    # Swatch size as a percentage of image dimension
-    swatch_size_percent_val = st.slider("Swatch size (% of image dimension)", 5, 50, 20, key="swatch_size_percent", help="Percentage of image height (for top/bottom) or width (for left/right).")
-
-
-with col3:
-    st.subheader("Borders")
-
-    # Separate sliders for image border, swatch-image separator, and individual swatch borders
-    image_border_thickness_px_val = st.slider("Image Border Thickness (px)", 0, 200, 0, key="image_border_thickness_px")
-    swatch_separator_thickness_px_val = st.slider("Swatch-Image Separator Thickness (px)", 0, 200, 0, key="swatch_separator_thickness_px", help="Thickness of the line separating swatches from the image.")
-    # New slider for individual swatch borders
-    individual_swatch_border_thickness_px_val = st.slider("Individual Swatch Border Thickness (px)", 0, 200, 0, key="individual_swatch_border_thickness_px", help="Thickness of lines separating individual swatches.")
-
-
-    border_color = st.color_picker("Main Border Color", "#FFFFFF", key="border_color")
-    swatch_border_color = st.color_picker("Swatch Border Color", "#FFFFFF", key="swatch_border_color") # Default color changed to white
-
-    remove_adjacent_border = st.checkbox("Align swatches with image edge", value=True, key="remove_adjacent_border")
-
-
-# --- Check for settings change to reset state ---
-# Create a hash of current relevant settings
-current_settings = (
-    frozenset([(f.name, f.size) for f in uploaded_files]) if uploaded_files else None,
-    frozenset(positions),
-    resize_option,
-    scale_percent,
-    output_format,
-    webp_lossless,
-    quant_method_label,
-    num_colors,
-    swatch_size_percent_val,
-    image_border_thickness_px_val,
-    swatch_separator_thickness_px_val,
-    individual_swatch_border_thickness_px_val,
-    border_color,
-    swatch_border_color,
-    remove_adjacent_border
-)
-current_settings_hash = hash(current_settings)
-
-# If settings have changed, reset the generation stage and button clicked state
-if st.session_state.current_settings_hash is not None and st.session_state.current_settings_hash != current_settings_hash:
-    st.session_state.generation_stage = "initial"
-    st.session_state.preview_html_parts = []
-    st.session_state.generated_image_data = {}
-    st.session_state.zip_buffer = None
-    st.session_state.total_generations_at_start = 0 # Reset total count
-    st.session_state.full_batch_button_clicked = False # Reset button clicked state
-    generate_full_batch_button_container.empty() # Clear the button if settings change
-    resize_message_container.empty() # Clear resize messages on settings change
-
-
-st.session_state.current_settings_hash = current_settings_hash # Update the stored hash
-
-
-# --- Main Generation Logic ---
-if uploaded_files and positions:
-    total_generations = len(uploaded_files) * len(positions)
-    st.session_state.total_generations_at_start = total_generations # Store total for later reference
-
-    st.markdown("---")
-    st.subheader("Previews")
-
-    # Initialize preview_display_area here unconditionally
-    preview_display_area = preview_container.empty()
-
-    # Determine which images/layouts to generate based on the stage
-    images_to_process = []
-    if st.session_state.generation_stage == "initial" and total_generations > 10:
-        # Process only the first 6 for preview
-        images_to_process = uploaded_files[:6]
-        layouts_to_process = positions # Process all selected positions for the first 6 images
-        processing_limit = 6 * len(positions) # Limit total generations for preview
-        current_processing_count = 0
-
-    elif st.session_state.generation_stage == "full_batch_generating" or total_generations <= 10:
-         # Process all images and layouts
-        images_to_process = uploaded_files
-        layouts_to_process = positions
-        processing_limit = total_generations # No limit for full batch or small batches
-        current_processing_count = 0 # Reset count for full batch display
-
-
-    # Display preloader and status text if generating
-    if st.session_state.generation_stage in ["initial", "full_batch_generating"] or total_generations <= 10:
-        preloader_and_status_container.markdown("""
-            <div class='preloader-area'>
-                <div class='preloader'></div>
-                <span class='preloader-text'>Generating in progress...</span>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # Clear previous previews and buttons before generating
-        # preview_display_area = preview_container.empty() # Removed - initialized above
-        download_buttons_container.empty()
-        generate_full_batch_button_container.empty() # Clear button if it was there
-        resize_message_container.empty() # Clear previous resize messages
-
-
-        # --- Generation Loop ---
-        individual_preview_html_parts = []
-        zip_buffer = io.BytesIO()
-        generated_image_data = {}
-
-        # Use compresslevel=0 (ZIP_STORED) for speed, as images are already compressed.
-        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, compresslevel=0) as zipf:
-            for file_idx, uploaded_file_obj in enumerate(images_to_process):
-                file_name = uploaded_file_obj.name
-
-                # --- Start Exception Handling for File Processing ---
-                try:
-                    uploaded_file_bytes = uploaded_file_obj.getvalue() # Use uploaded_file_obj here
-
-                    # Attempt to open and verify the image using PIL
-                    try:
-                        image_stream_for_verify = io.BytesIO(uploaded_file_bytes)
-                        image = Image.open(image_stream_for_verify)
-                        image.verify() # Verify image integrity
-                        # Re-open the image stream as verify might close it
-                        image_stream_for_load = io.BytesIO(uploaded_file_bytes)
-                        image = Image.open(image_stream_for_load)
-
-
-                    except (UnidentifiedImageError, Exception) as e:
-                         st.warning(f"Could not open or verify image file: `{file_name}`. It might be corrupted or not a valid image file. Skipped.")
-                         current_processing_count += len(layouts_to_process) # Increment count for skipped file
-                         # Update preloader text for skipped file
-                         preloader_and_status_container.markdown(f"""
-                             <div class='preloader-area'>
-                                 <div class='preloader'></div>
-                                 <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
-                             </div>
-                         """, unsafe_allow_html=True)
-                         continue # Skip to the next file
-
-
-                    # Further checks after successful opening
-                    w, h = image.size
-                    if not (10 <= w <= 10000 and 10 <= h <= 10000):
-                        st.warning(f"`{file_name}` has an unsupported resolution ({w}x{h}). Skipped.")
-                        current_processing_count += len(layouts_to_process) # Increment count for skipped file
-                        # Update preloader text for skipped file
-                        preloader_and_status_container.markdown(f"""
-                            <div class='preloader-area'>
-                                <div class='preloader'></div>
-                                <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
-                            </div>
-                        """, unsafe_allow_html=True)
+                    if detected_format is None:
+                        st.warning(f"File `{file_name}` does not appear to be a valid or supported image format based on its header. Skipped.")
                         continue # Skip this file
 
-                    # --- Image Resizing Logic ---
-                    original_width, original_height = image.size
-                    max_dimension = 2000
-                    resized = False
+                    file_extension = os.path.splitext(file_name)[1].lower()
+                    # Check against the allowed extensions list (for user message clarity)
+                    if file_extension not in allowed_extensions_set:
+                         st.warning(f"`{file_name}` has an unusual or unsupported extension (`{file_extension}`). Allowed extensions are: {', '.join(sorted(list(allowed_extensions_set)))}. Processing based on detected header, but unexpected behavior may occur.")
 
-                    if original_width > max_dimension or original_height > max_dimension:
-                        resized = True
-                        if original_width > original_height:
-                            new_width = max_dimension
-                            new_height = int(original_height * (max_dimension / original_width))
-                        else:
-                            new_height = max_dimension
-                            new_width = int(original_width * (max_dimension / original_height))
+                    valid_files_after_upload.append(file_obj)
 
-                        # Ensure dimensions are at least 1 pixel
-                        new_width = max(1, new_width)
-                        new_height = max(1, new_height)
+                 except Exception as e:
+                     # Catch any error during initial file object access or header check
+                     st.error(f"An error occurred while performing initial check on file `{file_name}`: {e}. This file will be skipped.")
+                     continue # Skip to the next file in the loop
+                 # --- End broad exception handling ---
 
-                        image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                        resize_message_container.info(f"Image '{file_name}' resized from {original_width}x{original_height} to {new_width}x{new_height}.")
+            uploaded_files = valid_files_after_upload # Update uploaded_files to only include valid ones
 
 
-                    # Convert image to RGB if it's not, to ensure compatibility with color drawing
-                    if image.mode not in ("RGB", "L"):
-                         image = image.convert("RGB")
+        st.subheader("Download Options")
+        resize_option = st.radio("Resize method", ["Original size", "Scale (%)"], index=0, key="resize_option")
+        scale_percent = 100
+        if resize_option == "Scale (%)":
+            scale_percent = st.slider("Scale percent", 10, 200, 100, key="scale_percent")
 
-                    # --- Color Extraction ---
-                    palette = extract_palette(image, num_colors, quantize_method=quantize_method_selected)
+        output_format_options = ["JPG", "PNG", "WEBP"]
+        output_format = st.selectbox("Output format", output_format_options, key="output_format")
 
-                    if not palette:
-                        # st.warning(f"Failed to extract palette for `{file_name}`. Skipping swatches.") # Less verbose
-                        pass # Continue even if palette extraction fails
+        webp_lossless = False
+        if output_format == "WEBP":
+            webp_lossless = st.checkbox("Lossless WEBP", value=False, key="webp_lossless", help="Generates larger files, but with better quality.")
 
-                    # Pass the new separate thickness values
-                    for pos_idx, pos in enumerate(layouts_to_process):
-                        # Stop processing if we are in preview stage and have reached the limit
-                        if st.session_state.generation_stage == "initial" and current_processing_count >= processing_limit:
-                             break # Stop processing layouts for this image
+        format_map = {
+            "JPG": ("JPEG", "jpg"),
+            "PNG": ("PNG", "png"),
+            "WEBP": ("WEBP", "webp")
+        }
+        img_format, extension = format_map[output_format]
 
+
+    with col2:
+        st.subheader("Layout Settings")
+        positions = []
+        st.write("Swatch position(s) (multiple can be selected):")
+
+        # Use columns for layout toggles
+        row1_layout = st.columns(2)
+        row2_layout = st.columns(2)
+
+        if row1_layout[0].toggle("Top", key="pos_top"): positions.append("top")
+        if row1_layout[1].toggle("Left", key="pos_left"): positions.append("left")
+        # Default 'bottom' to True as requested
+        if row2_layout[0].toggle("Bottom", value=True, key="pos_bottom"): positions.append("bottom")
+        if row2_layout[1].toggle("Right", key="pos_right"): positions.append("right")
+
+
+        quant_method_label = st.selectbox(
+            "Palette extraction method",
+            ["MEDIANCUT", "MAXCOVERAGE", "FASTOCTREE"],
+            index=0, key="quant_method",
+            help="MEDIANCUT: Good general results. MAXCOVERAGE: Can be slower. FASTOCTREE: Faster."
+        )
+        quant_method_map = {"MEDIANCUT": Image.MEDIANCUT, "MAXCOVERAGE": Image.MAXCOVERAGE, "FASTOCTREE": Image.FASTOCTREE}
+        quantize_method_selected = quant_method_map[quant_method_label]
+
+        num_colors = st.slider("Number of swatches", 2, 12, 6, key="num_colors")
+
+        # Swatch size as a percentage of image dimension
+        swatch_size_percent_val = st.slider("Swatch size (% of image dimension)", 5, 50, 20, key="swatch_size_percent", help="Percentage of image height (for top/bottom) or width (for left/right).")
+
+
+    with col3:
+        st.subheader("Borders")
+
+        # Separate sliders for image border, swatch-image separator, and individual swatch borders
+        image_border_thickness_px_val = st.slider("Image Border Thickness (px)", 0, 200, 0, key="image_border_thickness_px")
+        swatch_separator_thickness_px_val = st.slider("Swatch-Image Separator Thickness (px)", 0, 200, 0, key="swatch_separator_thickness_px", help="Thickness of the line separating swatches from the image.")
+        # New slider for individual swatch borders
+        individual_swatch_border_thickness_px_val = st.slider("Individual Swatch Border Thickness (px)", 0, 200, 0, key="individual_swatch_border_thickness_px", help="Thickness of lines separating individual swatches.")
+
+
+        border_color = st.color_picker("Main Border Color", "#FFFFFF", key="border_color")
+        swatch_border_color = st.color_picker("Swatch Border Color", "#FFFFFF", key="swatch_border_color") # Default color changed to white
+
+        remove_adjacent_border = st.checkbox("Align swatches with image edge", value=True, key="remove_adjacent_border")
+
+
+    # --- Check for settings change to reset state ---
+    # Create a hash of current relevant settings
+    current_settings = (
+        frozenset([(f.name, f.size) for f in uploaded_files]) if uploaded_files else None,
+        frozenset(positions),
+        resize_option,
+        scale_percent,
+        output_format,
+        webp_lossless,
+        quant_method_label,
+        num_colors,
+        swatch_size_percent_val,
+        image_border_thickness_px_val,
+        swatch_separator_thickness_px_val,
+        individual_swatch_border_thickness_px_val,
+        border_color,
+        swatch_border_color,
+        remove_adjacent_border
+    )
+    current_settings_hash = hash(current_settings)
+
+    # If settings have changed, reset the generation stage and button clicked state
+    if st.session_state.current_settings_hash is not None and st.session_state.current_settings_hash != current_settings_hash:
+        st.session_state.generation_stage = "initial"
+        st.session_state.preview_html_parts = []
+        st.session_state.generated_image_data = {}
+        st.session_state.zip_buffer = None
+        st.session_state.total_generations_at_start = 0 # Reset total count
+        st.session_state.full_batch_button_clicked = False # Reset button clicked state
+        generate_full_batch_button_container.empty() # Clear the button if settings change
+        resize_message_container.empty() # Clear resize messages on settings change
+
+
+    st.session_state.current_settings_hash = current_settings_hash # Update the stored hash
+
+
+    # --- Main Generation Logic ---
+    if uploaded_files and positions:
+        total_generations = len(uploaded_files) * len(positions)
+        st.session_state.total_generations_at_start = total_generations # Store total for later reference
+
+        st.markdown("---")
+        st.subheader("Previews")
+
+        # Initialize preview_display_area here unconditionally
+        preview_display_area = preview_container.empty()
+
+        # Determine which images/layouts to generate based on the stage
+        images_to_process = []
+        if st.session_state.generation_stage == "initial" and total_generations > 10:
+            # Process only the first 6 for preview
+            images_to_process = uploaded_files[:6]
+            layouts_to_process = positions # Process all selected positions for the first 6 images
+            processing_limit = 6 * len(positions) # Limit total generations for preview
+            current_processing_count = 0
+
+        elif st.session_state.generation_stage == "full_batch_generating" or total_generations <= 10:
+             # Process all images and layouts
+            images_to_process = uploaded_files
+            layouts_to_process = positions
+            processing_limit = total_generations # No limit for full batch or small batches
+            current_processing_count = 0 # Reset count for full batch display
+
+
+        # Display preloader and status text if generating
+        if st.session_state.generation_stage in ["initial", "full_batch_generating"] or total_generations <= 10:
+            preloader_and_status_container.markdown("""
+                <div class='preloader-area'>
+                    <div class='preloader'></div>
+                    <span class='preloader-text'>Generating in progress...</span>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # Clear previous previews and buttons before generating
+            # preview_display_area = preview_container.empty() # Removed - initialized above
+            download_buttons_container.empty()
+            generate_full_batch_button_container.empty() # Clear button if it was there
+            resize_message_container.empty() # Clear previous resize messages
+
+
+            # --- Generation Loop ---
+            individual_preview_html_parts = []
+            zip_buffer = io.BytesIO()
+            generated_image_data = {}
+
+            # Use compresslevel=0 (ZIP_STORED) for speed, as images are already compressed.
+            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, compresslevel=0) as zipf:
+                for file_idx, uploaded_file_obj in enumerate(images_to_process):
+                    file_name = uploaded_file_obj.name
+
+                    # --- Start Exception Handling for File Processing ---
+                    try:
+                        uploaded_file_bytes = uploaded_file_obj.getvalue() # Use uploaded_file_obj here
+
+                        # Attempt to open and verify the image using PIL
                         try:
-                            result_img = draw_layout(
-                                image.copy(), palette, pos,
-                                image_border_thickness_px_val, swatch_separator_thickness_px_val,
-                                individual_swatch_border_thickness_px_val, # Pass the new value
-                                border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
-                            )
-
-                            # Apply scaling if selected (this is separate from the initial resize)
-                            if resize_option == "Scale (%)" and scale_percent != 100:
-                                new_w = int(result_img.width * scale_percent / 100)
-                                new_h = int(result_img.height * scale_percent / 100)
-                                if new_w > 0 and new_h > 0:
-                                    result_img = result_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                                else:
-                                    st.warning(f"Cannot resize {file_name}_{pos}. Using original size.")
+                            image_stream_for_verify = io.BytesIO(uploaded_file_bytes)
+                            image = Image.open(image_stream_for_verify)
+                            image.verify() # Verify image integrity
+                            # Re-open the image stream as verify might close it
+                            image_stream_for_load = io.BytesIO(uploaded_file_bytes)
+                            image = Image.open(image_stream_for_load)
 
 
-                            img_byte_arr = io.BytesIO()
-                            base_name, original_extension = os.path.splitext(file_name) # Use os.path.splitext
-
-                            # Create a safe filename for the output
-                            safe_base_name = "".join(c if c.isalnum() or c in (' ', '.', '_', '-') else '_' for c in base_name).rstrip()
-                            name_for_file = f"{safe_base_name}_{pos}.{extension}" # Consistent naming
-
-                            # Save parameters based on output format
-                            save_params = {}
-                            if img_format == "JPEG": save_params['quality'] = 95 # JPEG quality
-                            elif img_format == "WEBP":
-                                save_params['quality'] = 85 # Default WEBP quality
-                                if webp_lossless:
-                                    save_params['lossless'] = True
-                                    save_params['quality'] = 100 # Quality 100 for lossless
-
-                            # Save the full-size image bytes
-                            result_img.save(img_byte_arr, format=img_format, **save_params)
-                            img_bytes_for_download = img_byte_arr.getvalue()
-                            generated_image_data[name_for_file] = img_bytes_for_download # Store image data
-
-                            # Add to ZIP file only during full batch generation or small batches
-                            if st.session_state.generation_stage == "full_batch_generating" or total_generations <= 10:
-                                zipf.writestr(name_for_file, img_bytes_for_download)
+                        except (UnidentifiedImageError, Exception) as e:
+                             st.warning(f"Could not open or verify image file: `{file_name}`. It might be corrupted or not a valid image file. Skipped.")
+                             current_processing_count += len(layouts_to_process) # Increment count for skipped file
+                             # Update preloader text for skipped file
+                             preloader_and_status_container.markdown(f"""
+                                 <div class='preloader-area'>
+                                     <div class='preloader'></div>
+                                     <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
+                                 </div>
+                             """, unsafe_allow_html=True)
+                             continue # Skip to the next file
 
 
-                            # Create a thumbnail for the preview
-                            preview_img_for_display = result_img.copy()
-                            # Resize thumbnail to fit the preview item width, maintaining aspect ratio
-                            preview_img_for_display.thumbnail((200, 200)) # Adjusted thumbnail size
-
-                            with io.BytesIO() as buffer_display:
-                                # Save preview thumbnail as PNG for consistent display
-                                preview_img_for_display.save(buffer_display, format="PNG")
-                                img_base64 = base64.b64encode(buffer_display.getvalue()).decode("utf-8")
-
-                            # Encode the full-size image for the download link (even in preview stage)
-                            img_base64_download = base64.b64encode(img_bytes_for_download).decode("utf-8")
-                            download_mime_type = f"image/{extension}" # Mime type for the download link
-
-                            # Shorten filename for display
-                            display_name = shorten_filename(name_for_file, max_len=25, front_chars=10, back_chars=10)
-
-                            # Construct HTML for individual preview item with download link
-                            single_item_html = f"<div class='preview-item'>"
-                            single_item_html += f"<div class='preview-item-name' title='{name_for_file}'>{display_name}</div>" # Add full name as title
-                            single_item_html += f"<img src='data:image/png;base64,{img_base64}' alt='Preview of {name_for_file}'>"
-                            # Add the download link
-                            single_item_html += f"<a href='data:{download_mime_type};base64,{img_base64_download}' download='{name_for_file}' class='download-link'>Download</a>"
-                            single_item_html += "</div>"
-
-                            individual_preview_html_parts.append(single_item_html)
-
-                            current_processing_count += 1 # Increment count for successfully processed layout
-
-                            # Update preloader text with progress
-                            preloader_and_status_container.markdown(f"""
-                                <div class='preloader-area'>
-                                    <div class='preloader'></div>
-                                <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
-                            </div>
-                        """, unsafe_allow_html=True)
-
-                        except Exception as e_layout:
-                            st.error(f"Error creating layout for {file_name} (pos: {pos}): {e_layout}")
-                            current_processing_count += len(layouts_to_process) # Increment count even if layout creation fails
-                            # Update preloader text with progress
+                        # Further checks after successful opening
+                        w, h = image.size
+                        if not (10 <= w <= 10000 and 10 <= h <= 10000):
+                            st.warning(f"`{file_name}` has an unsupported resolution ({w}x{h}). Skipped.")
+                            current_processing_count += len(layouts_to_process) # Increment count for skipped file
+                            # Update preloader text for skipped file
                             preloader_and_status_container.markdown(f"""
                                 <div class='preloader-area'>
                                     <div class='preloader'></div>
                                     <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
                                 </div>
                             """, unsafe_allow_html=True)
+                            continue # Skip this file
 
-                    # Stop processing images if we are in preview stage and have reached the limit
-                    if st.session_state.generation_stage == "initial" and current_processing_count >= processing_limit:
-                         break # Stop processing images
+                        # --- Image Resizing Logic ---
+                        original_width, original_height = image.size
+                        max_dimension = 2000
+                        resized = False
 
+                        if original_width > max_dimension or original_height > max_dimension:
+                            resized = True
+                            if original_width > original_height:
+                                new_width = max_dimension
+                                new_height = int(original_height * (max_dimension / original_width))
+                            else:
+                                new_height = max_dimension
+                                new_width = int(original_width * (max_dimension / original_height))
 
-                # --- End Exception Handling for File Processing ---
-                except Exception as e:
-                    # Catch any other general exceptions during file processing
-                    st.error(f"An unexpected error occurred while processing `{file_name}`: {e}. Skipped.")
-                    current_processing_count += len(layouts_to_process) # Increment count for skipped file
-                    # Update preloader text for progress
-                    preloader_and_status_container.markdown(f"""
-                        <div class='preloader-area'>
-                            <div class='preloader'></div>
-                            <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    continue # Skip to the next file
+                            # Ensure dimensions are at least 1 pixel
+                            new_width = max(1, new_width)
+                            new_height = max(1, new_height)
 
-
-        # Store generated data in session state
-        st.session_state.preview_html_parts = individual_preview_html_parts
-        st.session_state.generated_image_data = generated_image_data
-
-        # Seek zip buffer to the beginning only if full batch was generated
-        if st.session_state.generation_stage == "full_batch_generating" or total_generations <= 10:
-             zip_buffer.seek(0)
-             st.session_state.zip_buffer = zip_buffer # Store the full zip buffer
+                            image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                            resize_message_container.info(f"Image '{file_name}' resized from {original_width}x{original_height} to {new_width}x{new_height}.")
 
 
-        # Clear preloader after processing is done
+                        # Convert image to RGB if it's not, to ensure compatibility with color drawing
+                        if image.mode not in ("RGB", "L"):
+                             image = image.convert("RGB")
+
+                        # --- Color Extraction ---
+                        palette = extract_palette(image, num_colors, quantize_method=quantize_method_selected)
+
+                        if not palette:
+                            # st.warning(f"Failed to extract palette for `{file_name}`. Skipping swatches.") # Less verbose
+                            pass # Continue even if palette extraction fails
+
+                        # Pass the new separate thickness values
+                        for pos_idx, pos in enumerate(layouts_to_process):
+                            # Stop processing if we are in preview stage and have reached the limit
+                            if st.session_state.generation_stage == "initial" and current_processing_count >= processing_limit:
+                                 break # Stop processing layouts for this image
+
+                            try:
+                                result_img = draw_layout(
+                                    image.copy(), palette, pos,
+                                    image_border_thickness_px_val, swatch_separator_thickness_px_val,
+                                    individual_swatch_border_thickness_px_val, # Pass the new value
+                                    border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
+                                )
+
+                                # Apply scaling if selected (this is separate from the initial resize)
+                                if resize_option == "Scale (%)" and scale_percent != 100:
+                                    new_w = int(result_img.width * scale_percent / 100)
+                                    new_h = int(result_img.height * scale_percent / 100)
+                                    if new_w > 0 and new_h > 0:
+                                        result_img = result_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                                    else:
+                                        st.warning(f"Cannot resize {file_name}_{pos}. Using original size.")
+
+
+                                img_byte_arr = io.BytesIO()
+                                base_name, original_extension = os.path.splitext(file_name) # Use os.path.splitext
+
+                                # Create a safe filename for the output
+                                safe_base_name = "".join(c if c.isalnum() or c in (' ', '.', '_', '-') else '_' for c in base_name).rstrip()
+                                name_for_file = f"{safe_base_name}_{pos}.{extension}" # Consistent naming
+
+                                # Save parameters based on output format
+                                save_params = {}
+                                if img_format == "JPEG": save_params['quality'] = 95 # JPEG quality
+                                elif img_format == "WEBP":
+                                    save_params['quality'] = 85 # Default WEBP quality
+                                    if webp_lossless:
+                                        save_params['lossless'] = True
+                                        save_params['quality'] = 100 # Quality 100 for lossless
+
+                                # Save the full-size image bytes
+                                result_img.save(img_byte_arr, format=img_format, **save_params)
+                                img_bytes_for_download = img_byte_arr.getvalue()
+                                generated_image_data[name_for_file] = img_bytes_for_download # Store image data
+
+                                # Add to ZIP file only during full batch generation or small batches
+                                if st.session_state.generation_stage == "full_batch_generating" or total_generations <= 10:
+                                    zipf.writestr(name_for_file, img_bytes_for_download)
+
+
+                                # Create a thumbnail for the preview
+                                preview_img_for_display = result_img.copy()
+                                # Resize thumbnail to fit the preview item width, maintaining aspect ratio
+                                preview_img_for_display.thumbnail((200, 200)) # Adjusted thumbnail size
+
+                                with io.BytesIO() as buffer_display:
+                                    # Save preview thumbnail as PNG for consistent display
+                                    preview_img_for_display.save(buffer_display, format="PNG")
+                                    img_base64 = base64.b64encode(buffer_display.getvalue()).decode("utf-8")
+
+                                # Encode the full-size image for the download link (even in preview stage)
+                                img_base64_download = base64.b64encode(img_bytes_for_download).decode("utf-8")
+                                download_mime_type = f"image/{extension}" # Mime type for the download link
+
+                                # Shorten filename for display
+                                display_name = shorten_filename(name_for_file, max_len=25, front_chars=10, back_chars=10)
+
+                                # Construct HTML for individual preview item with download link
+                                single_item_html = f"<div class='preview-item'>"
+                                single_item_html += f"<div class='preview-item-name' title='{name_for_file}'>{display_name}</div>" # Add full name as title
+                                single_item_html += f"<img src='data:image/png;base64,{img_base64}' alt='Preview of {name_for_file}'>"
+                                # Add the download link
+                                single_item_html += f"<a href='data:{download_mime_type};base64,{img_base64_download}' download='{name_for_file}' class='download-link'>Download</a>"
+                                single_item_html += "</div>"
+
+                                individual_preview_html_parts.append(single_item_html)
+
+                                current_processing_count += 1 # Increment count for successfully processed layout
+
+                                # Update preloader text with progress
+                                preloader_and_status_container.markdown(f"""
+                                    <div class='preloader-area'>
+                                        <div class='preloader'></div>
+                                    <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
+                                </div>
+                            """, unsafe_allow_html=True)
+
+                            except Exception as e_layout:
+                                st.error(f"Error creating layout for {file_name} (pos: {pos}): {e_layout}")
+                                current_processing_count += len(layouts_to_process) # Increment count even if layout creation fails
+                                # Update preloader text with progress
+                                preloader_and_status_container.markdown(f"""
+                                    <div class='preloader-area'>
+                                        <div class='preloader'></div>
+                                        <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
+                                    </div>
+                                """, unsafe_allow_html=True)
+
+                        # Stop processing images if we are in preview stage and have reached the limit
+                        if st.session_state.generation_stage == "initial" and current_processing_count >= processing_limit:
+                             break # Stop processing images
+
+
+                    # --- End Exception Handling for File Processing ---
+                    except Exception as e:
+                        # Catch any other general exceptions during file processing
+                        st.error(f"An unexpected error occurred while processing `{file_name}`: {e}. Skipped.")
+                        current_processing_count += len(layouts_to_process) # Increment count for skipped file
+                        # Update preloader text for progress
+                        preloader_and_status_container.markdown(f"""
+                            <div class='preloader-area'>
+                                <div class='preloader'></div>
+                                <span class='preloader-text'>Generating in progress... {current_processing_count}/{processing_limit}</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        continue # Skip to the next file
+
+
+            # Store generated data in session state
+            st.session_state.preview_html_parts = individual_preview_html_parts
+            st.session_state.generated_image_data = generated_image_data
+
+            # Seek zip buffer to the beginning only if full batch was generated
+            if st.session_state.generation_stage == "full_batch_generating" or total_generations <= 10:
+                 zip_buffer.seek(0)
+                 st.session_state.zip_buffer = zip_buffer # Store the full zip buffer
+
+
+            # Clear preloader after processing is done
+            preloader_and_status_container.empty()
+
+            # Update generation stage
+            if st.session_state.generation_stage == "initial" and total_generations > 10:
+                 st.session_state.generation_stage = "preview_generated"
+            elif st.session_state.generation_stage == "full_batch_generating" or total_generations <= 10:
+                 st.session_state.generation_stage = "completed"
+
+
+        # --- Display Previews and Buttons based on Stage ---
+        # Display the generated previews
+        if st.session_state.preview_html_parts:
+            preview_display_area.markdown(
+                "<div id='preview-zone'>" + "\n".join(st.session_state.preview_html_parts) + "</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            preview_display_area.empty() # Clear preview area if no previews
+
+
+        # Display the "Generate Full Batch" button if in preview stage
+        if st.session_state.generation_stage == "preview_generated":
+            with generate_full_batch_button_container:
+                 # Use st.button and apply styling via CSS targeting the button element
+                 if st.button("Large batch detected, do Your adjustments and click here to generate the rest!", use_container_width=True, key="generate_full_batch_button"):
+                     st.session_state.generation_stage = "full_batch_generating"
+                     st.session_state.full_batch_button_clicked = True # Set flag when button is clicked
+                     st.rerun() # Trigger rerun to start full batch generation
+
+        # Display the download button if in completed stage
+        if st.session_state.generation_stage == "completed" and st.session_state.zip_buffer and st.session_state.zip_buffer.getbuffer().nbytes > zipfile.sizeFileHeader + 100:
+            with download_buttons_container:
+                st.download_button(
+                    label=f"Download All as ZIP ({extension.upper()})",
+                    data=st.session_state.zip_buffer,
+                    file_name=f"ColorSwatches_{output_format.lower()}.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                    key="download_zip",
+                    disabled=False
+                )
+        elif st.session_state.generation_stage == "completed" and st.session_state.total_generations_at_start > 0:
+             # Show warning if completed but no images were successfully generated
+             with download_buttons_container:
+                  st.warning("No images were successfully generated for the ZIP. Check errors above.")
+        else:
+            # Initially disable the download button if not in completed stage or no files generated
+             with download_buttons_container:
+                 st.download_button(
+                     label=f"Download All as ZIP ({extension.upper()})",
+                     data=io.BytesIO(), # Empty data
+                     file_name=f"ColorSwatches_{output_format.lower()}.zip",
+                     mime="application/zip",
+                     use_container_width=True,
+                     key="download_zip_disabled",
+                     disabled=True, # Keep disabled
+                     help="ZIP download will be available after the full batch generation." # Tooltip added
+                 )
+
+
+    # --- Initial State/Messages when no files or positions are selected ---
+    else:
+        # Reset state and clear displays if inputs are not valid
+        st.session_state.generation_stage = "initial"
+        st.session_state.preview_html_parts = []
+        st.session_state.generated_image_data = {}
+        st.session_state.zip_buffer = None
+        st.session_state.total_generations_at_start = 0
+        st.session_state.full_batch_button_clicked = False # Reset button clicked state
+        generate_full_batch_button_container.empty() # Clear the button
+        resize_message_container.empty() # Clear resize messages
+
+        preview_container.empty()
+        download_buttons_container.empty()
+        spinner_container.empty()
         preloader_and_status_container.empty()
 
-        # Update generation stage
-        if st.session_state.generation_stage == "initial" and total_generations > 10:
-             st.session_state.generation_stage = "preview_generated"
-        elif st.session_state.generation_stage == "full_batch_generating" or total_generations <= 10:
-             st.session_state.generation_stage = "completed"
 
+        if uploaded_files and not positions:
+            st.info("Select at least one swatch position to generate previews and images for download.")
+        elif not uploaded_files:
+            st.info("Upload images to get started.")
 
-    # --- Display Previews and Buttons based on Stage ---
-    # Display the generated previews
-    if st.session_state.preview_html_parts:
-        preview_display_area.markdown(
-            "<div id='preview-zone'>" + "\n".join(st.session_state.preview_html_parts) + "</div>",
-            unsafe_allow_html=True
-        )
-    else:
-        preview_display_area.empty() # Clear preview area if no previews
-
-
-    # Display the "Generate Full Batch" button if in preview stage
-    if st.session_state.generation_stage == "preview_generated":
-        with generate_full_batch_button_container:
-             # Use st.button and apply styling via CSS targeting the button element
-             if st.button("Large batch detected, do Your adjustments and click here to generate the rest!", use_container_width=True, key="generate_full_batch_button"):
-                 st.session_state.generation_stage = "full_batch_generating"
-                 st.session_state.full_batch_button_clicked = True # Set flag when button is clicked
-                 st.rerun() # Trigger rerun to start full batch generation
-
-    # Display the download button if in completed stage
-    if st.session_state.generation_stage == "completed" and st.session_state.zip_buffer and st.session_state.zip_buffer.getbuffer().nbytes > zipfile.sizeFileHeader + 100:
+        # Ensure download button is disabled in initial state with no valid inputs
         with download_buttons_container:
-            st.download_button(
-                label=f"Download All as ZIP ({extension.upper()})",
-                data=st.session_state.zip_buffer,
-                file_name=f"ColorSwatches_{output_format.lower()}.zip",
-                mime="application/zip",
-                use_container_width=True,
-                key="download_zip",
-                disabled=False
-            )
-    elif st.session_state.generation_stage == "completed" and st.session_state.total_generations_at_start > 0:
-         # Show warning if completed but no images were successfully generated
-         with download_buttons_container:
-              st.warning("No images were successfully generated for the ZIP. Check errors above.")
-    else:
-        # Initially disable the download button if not in completed stage or no files generated
-         with download_buttons_container:
              st.download_button(
                  label=f"Download All as ZIP ({extension.upper()})",
                  data=io.BytesIO(), # Empty data
                  file_name=f"ColorSwatches_{output_format.lower()}.zip",
                  mime="application/zip",
                  use_container_width=True,
-                 key="download_zip_disabled",
+                 key="download_zip_disabled_initial",
                  disabled=True, # Keep disabled
                  help="ZIP download will be available after the full batch generation." # Tooltip added
              )
 
+except Exception as e:
+    # --- Top-level exception handler ---
+    st.error(f"An unexpected error occurred during file processing: {e}")
+    st.warning("Resetting application state. Please try uploading your files again. If the issue persists with the same files, they might be corrupted or in an unsupported format.")
 
-# --- Initial State/Messages when no files or positions are selected ---
-else:
-    # Reset state and clear displays if inputs are not valid
+    # Reset session state to clear any corrupted data and return to a stable state
     st.session_state.generation_stage = "initial"
     st.session_state.preview_html_parts = []
     st.session_state.generated_image_data = {}
     st.session_state.zip_buffer = None
     st.session_state.total_generations_at_start = 0
-    st.session_state.full_batch_button_clicked = False # Reset button clicked state
-    generate_full_batch_button_container.empty() # Clear the button
-    resize_message_container.empty() # Clear resize messages
+    st.session_state.full_batch_button_clicked = False
 
-    preview_container.empty()
-    download_buttons_container.empty()
-    spinner_container.empty()
-    preloader_and_status_container.empty()
+    # Clear the file uploader widget by changing its key
+    # This will also clear the uploaded files list
+    st.session_state.file_uploader = None
 
+    # Trigger a rerun to restart the script in a clean state
+    st.rerun()
 
-    if uploaded_files and not positions:
-        st.info("Select at least one swatch position to generate previews and images for download.")
-    elif not uploaded_files:
-        st.info("Upload images to get started.")
-
-    # Ensure download button is disabled in initial state with no valid inputs
-    with download_buttons_container:
-         st.download_button(
-             label=f"Download All as ZIP ({extension.upper()})",
-             data=io.BytesIO(), # Empty data
-             file_name=f"ColorSwatches_{output_format.lower()}.zip",
-             mime="application/zip",
-             use_container_width=True,
-             key="download_zip_disabled_initial",
-             disabled=True, # Keep disabled
-             help="ZIP download will be available after the full batch generation." # Tooltip added
-         )
