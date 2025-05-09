@@ -27,6 +27,8 @@ if 'total_generations_at_start' not in st.session_state:
     st.session_state.total_generations_at_start = 0
 if 'current_settings_hash' not in st.session_state:
     st.session_state.current_settings_hash = None
+if 'full_batch_button_clicked' not in st.session_state:
+    st.session_state.full_batch_button_clicked = False
 
 
 # --- Global containers for dynamic content ---
@@ -95,7 +97,7 @@ st.markdown("""
 
     .preview-item-name {
         font_size: 12px;
-        margin-bottom: 5px;
+        margin_bottom: 5px;
         color: #333;
         word_break: break_all; /* Break long filenames */
         height: 30px; /* Give it a fixed height to prevent layout shifts */
@@ -161,6 +163,30 @@ st.markdown("""
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
+    }
+
+    /* Custom style for the red button */
+    div.stButton > button {
+        background-color: #FF4B4B !important; /* Red background */
+        color: white !important; /* White text */
+        border-color: #FF4B4B !important; /* Red border */
+    }
+
+    /* Pulsating animation */
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    /* Apply animation to the upload text */
+    .pulsating-text {
+        animation: pulse 1.5s infinite;
+    }
+
+    /* Stop animation */
+    .no-animation {
+        animation: none;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -411,7 +437,10 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.subheader("Upload Images")
+    # Apply animation class based on session state
+    upload_text_class = "pulsating-text" if not st.session_state.full_batch_button_clicked else "no-animation"
+    st.markdown(f'<div class="{upload_text_class}">Upload Images</div>', unsafe_allow_html=True)
+
     allowed_types = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif"]
     uploaded_files = st.file_uploader(
         "Choose images",
@@ -523,13 +552,14 @@ current_settings = (
 )
 current_settings_hash = hash(current_settings)
 
-# If settings have changed, reset the generation stage
+# If settings have changed, reset the generation stage and button clicked state
 if st.session_state.current_settings_hash is not None and st.session_state.current_settings_hash != current_settings_hash:
     st.session_state.generation_stage = "initial"
     st.session_state.preview_html_parts = []
     st.session_state.generated_image_data = {}
     st.session_state.zip_buffer = None
     st.session_state.total_generations_at_start = 0 # Reset total count
+    st.session_state.full_batch_button_clicked = False # Reset button clicked state
     generate_full_batch_button_container.empty() # Clear the button if settings change
 
 st.session_state.current_settings_hash = current_settings_hash # Update the stored hash
@@ -785,8 +815,10 @@ if uploaded_files and positions:
     # Display the "Generate Full Batch" button if in preview stage
     if st.session_state.generation_stage == "preview_generated":
         with generate_full_batch_button_container:
-             if st.button("Are the adjustments ok? Generate the whole batch!", use_container_width=True):
+             # Use st.button and apply styling via CSS targeting the button element
+             if st.button("Large batch detected, do Your adjustments and click here to generate the rest!", use_container_width=True, key="generate_full_batch_button"):
                  st.session_state.generation_stage = "full_batch_generating"
+                 st.session_state.full_batch_button_clicked = True # Set flag when button is clicked
                  st.rerun() # Trigger rerun to start full batch generation
 
     # Display the download button if in completed stage
@@ -827,6 +859,7 @@ else:
     st.session_state.generated_image_data = {}
     st.session_state.zip_buffer = None
     st.session_state.total_generations_at_start = 0
+    st.session_state.full_batch_button_clicked = False # Reset button clicked state
     generate_full_batch_button_container.empty() # Clear the button
 
     preview_container.empty()
