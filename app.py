@@ -95,7 +95,7 @@ with col1:
     st.subheader("Upload Images")
     uploaded_files = st.file_uploader(
         "Upload images",
-        type=["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff"],  # ✅ no dots
+        type=["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif"],
         accept_multiple_files=True
     )
 
