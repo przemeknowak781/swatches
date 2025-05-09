@@ -28,34 +28,34 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
     # Paste image
     if position == 'top':
         canvas.paste(image, (border, swatch_size + border))
-        y_offset = border + swatch_border_thickness  # swatches aligned at bottom
+        swatch_y = border + swatch_border_thickness  # bottom of swatch aligns with image top
     elif position == 'bottom':
-        canvas.paste(image, (border, border))
-        y_offset = border + img_h - swatch_size - swatch_border_thickness
+        canvas.paste(image, (border, border + swatch_size))
+        swatch_y = border  # top of swatch aligns with image bottom
     elif position == 'left':
         canvas.paste(image, (swatch_size + border, border))
-        x_offset = border + swatch_border_thickness
+        swatch_x = border + swatch_border_thickness  # right of swatch aligns with image left
     elif position == 'right':
         canvas.paste(image, (border, border))
-        x_offset = border + img_w - swatch_size - swatch_border_thickness
+        swatch_x = border + img_w - swatch_size - swatch_border_thickness  # left of swatch aligns with image right
 
     draw = ImageDraw.Draw(canvas)
     if position in ['top', 'bottom']:
         swatch_width = image.width // len(colors)
         for i, color in enumerate(colors):
-            x0 = border + i * swatch_width + swatch_border_thickness
-            x1 = border + (i + 1) * swatch_width - swatch_border_thickness
-            y0 = y_offset
-            y1 = y0 + swatch_size
+            x0 = border + i * swatch_width
+            x1 = border + (i + 1) * swatch_width
+            y0 = swatch_y
+            y1 = swatch_y + swatch_size
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
             draw.rectangle([x0, y0, x1, y1], outline=swatch_border_color, width=swatch_border_thickness)
     else:
         swatch_height = image.height // len(colors)
         for i, color in enumerate(colors):
-            y0 = border + i * swatch_height + swatch_border_thickness
-            y1 = border + (i + 1) * swatch_height - swatch_border_thickness
-            x0 = x_offset
-            x1 = x0 + swatch_size
+            y0 = border + i * swatch_height
+            y1 = border + (i + 1) * swatch_height
+            x0 = swatch_x
+            x1 = swatch_x + swatch_size
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
             draw.rectangle([x0, y0, x1, y1], outline=swatch_border_color, width=swatch_border_thickness)
 
