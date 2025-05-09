@@ -125,6 +125,32 @@ with col1:
 with col2:
     st.subheader("Layout Settings")
     positions = []
+    st.write("Swatch position(s):")
+    st.markdown("""
+    <style>
+    .toggle-row > div {
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    with st.container():
+        row1 = st.columns(2, gap="small")
+        row2 = st.columns(2, gap="small")
+        with row1[0]:
+            if st.toggle("Top", key="pos_top"):
+                positions.append("top")
+        with row1[1]:
+            if st.toggle("Left", key="pos_left"):
+                positions.append("left")
+        with row2[0]:
+            if st.toggle("Bottom", value=True, key="pos_bottom"):
+                positions.append("bottom")
+        with row2[1]:
+            if st.toggle("Right", key="pos_right"):
+                positions.append("right")
+    num_colors = st.slider("Number of swatches", min_value=2, max_value=12, value=6)
+    swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
     
 
 with col3:
