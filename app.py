@@ -6,6 +6,7 @@ import zipfile
 import base64
 import sys # Added for error logging
 import os # For filename manipulation
+import time # Added for simulating loading
 
 # --- Page Setup ---
 st.set_page_config(layout="wide")
@@ -18,6 +19,8 @@ spinner_container = st.empty()
 preview_container = st.container()
 # Container for download buttons (ZIP only now)
 download_buttons_container = st.container()
+# Container for displaying file processing status
+processing_status_container = st.empty()
 
 
 # --- CSS for responsive columns and general styling ---
@@ -379,9 +382,19 @@ if uploaded_files and positions:
         individual_preview_html_parts = []
         zip_buffer = io.BytesIO()
 
+        # List to track processing status of each file
+        file_processing_statuses = {file_obj.name: "Pending" for file_obj in uploaded_files}
+
         # Use compresslevel=0 (ZIP_STORED) for speed, as images are already compressed.
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, compresslevel=0) as zipf:
-            for uploaded_file_obj in uploaded_files:
+            for file_idx, uploaded_file_obj in enumerate(uploaded_files):
+                file_name = uploaded_file_obj.name
+                file_processing_statuses[file_name] = "Processing..."
+                # Update the processing status display
+                status_text = "\n".join([f"- {name}: {status}" for name, status in file_processing_statuses.items()])
+                processing_status_container.text(f"Processing Queue:\n{status_text}")
+
+
                 try:
                     uploaded_file_bytes = uploaded_file_obj.getvalue()
                     image_stream_for_verify = io.BytesIO(uploaded_file_bytes)
@@ -390,25 +403,29 @@ if uploaded_files and positions:
                     image_stream_for_load = io.BytesIO(uploaded_file_bytes)
                     image = Image.open(image_stream_for_load)
                 except UnidentifiedImageError:
-                    st.warning(f"Could not identify image file: `{uploaded_file_obj.name}`. Skipped.")
+                    st.warning(f"Could not identify image file: `{file_name}`. Skipped.")
+                    file_processing_statuses[file_name] = "Skipped (Invalid Image)"
                     continue
                 except Exception as e:
-                    st.warning(f"`{uploaded_file_obj.name}` could not be loaded or is corrupted ({e}). Skipped.")
+                    st.warning(f"`{file_name}` could not be loaded or is corrupted ({e}). Skipped.")
+                    file_processing_statuses[file_name] = f"Skipped (Error: {e})"
                     continue
 
                 try:
                     w, h = image.size
                     if not (10 <= w <= 10000 and 10 <= h <= 10000):
-                        st.warning(f"`{uploaded_file_obj.name}` has an unsupported resolution ({w}x{h}). Skipped.")
+                        st.warning(f"`{file_name}` has an unsupported resolution ({w}x{h}). Skipped.")
+                        file_processing_statuses[file_name] = "Skipped (Unsupported Resolution)"
                         continue
                     if image.mode not in ("RGB", "L"):
                          image = image.convert("RGB")
                     palette = extract_palette(image, num_colors, quantize_method=quantize_method_selected)
                     if not palette:
-                        # st.warning(f"Failed to extract palette for `{uploaded_file_obj.name}`. Skipping swatches.") # Less verbose
+                        # st.warning(f"Failed to extract palette for `{file_name}`. Skipping swatches.") # Less verbose
                         pass
                 except Exception as e:
-                    st.error(f"Error processing `{uploaded_file_obj.name}`: {e}. Skipped.")
+                    st.error(f"Error processing `{file_name}`: {e}. Skipped.")
+                    file_processing_statuses[file_name] = f"Skipped (Error: {e})"
                     continue
 
                 border_px = int(image.width * (border_thickness_percent / 100))
@@ -426,10 +443,10 @@ if uploaded_files and positions:
                             if new_w > 0 and new_h > 0:
                                 result_img = result_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
                             else:
-                                st.warning(f"Cannot resize {uploaded_file_obj.name}_{pos}. Using original size.")
+                                st.warning(f"Cannot resize {file_name}_{pos}. Using original size.")
 
                         img_byte_arr = io.BytesIO()
-                        base_name, original_extension = os.path.splitext(uploaded_file_obj.name) # Use os.path.splitext
+                        base_name, original_extension = os.path.splitext(file_name) # Use os.path.splitext
                         safe_base_name = "".join(c if c.isalnum() or c in (' ', '.', '_', '-') else '_' for c in base_name).rstrip()
                         name_for_file = f"{safe_base_name}_{pos}.{extension}" # Consistent naming
 
@@ -478,11 +495,19 @@ if uploaded_files and positions:
                         preview_display_area.markdown(current_full_html_content, unsafe_allow_html=True)
 
                     except Exception as e_layout:
-                        st.error(f"Error creating layout for {uploaded_file_obj.name} (pos: {pos}): {e_layout}")
+                        st.error(f"Error creating layout for {file_name} (pos: {pos}): {e_layout}")
+
+                # Mark the file as done after processing all positions
+                file_processing_statuses[file_name] = "Done"
+                status_text = "\n".join([f"- {name}: {status}" for name, status in file_processing_statuses.items()])
+                processing_status_container.text(f"Processing Queue:\n{status_text}")
+
 
         zip_buffer.seek(0)
         # Clear spinner after processing is done
         spinner_container.empty()
+        # Clear processing status display after all files are done
+        processing_status_container.empty()
 
 
     # --- Download Buttons (Only ZIP now) ---
@@ -495,7 +520,8 @@ if uploaded_files and positions:
                 file_name=f"ColorSwatches_{output_format.lower()}.zip",
                 mime="application/zip",
                 use_container_width=True,
-                key="download_zip"
+                key="download_zip",
+                disabled=False # Enable button after processing
             )
         elif uploaded_files and positions:
              st.warning("No images were generated for the ZIP. Check errors above.")
@@ -507,9 +533,24 @@ elif uploaded_files and not positions:
     preview_container.empty()
     download_buttons_container.empty()
     spinner_container.empty()
+    processing_status_container.empty()
 elif not uploaded_files:
     st.info("Upload images to get started.")
     # Clear previews and buttons if no files are uploaded
     preview_container.empty()
     download_buttons_container.empty()
     spinner_container.empty()
+    processing_status_container.empty()
+
+# Initially disable the download button if no files are uploaded or positions selected
+if not uploaded_files or not positions:
+     with download_buttons_container:
+         st.download_button(
+             label=f"Download All as ZIP ({extension.upper()})",
+             data=io.BytesIO(), # Empty data
+             file_name=f"ColorSwatches_{output_format.lower()}.zip",
+             mime="application/zip",
+             use_container_width=True,
+             key="download_zip_disabled",
+             disabled=True # Keep disabled
+         )
