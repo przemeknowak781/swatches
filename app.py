@@ -935,8 +935,8 @@ try:
         generate_full_batch_button_container.empty() # Clear the button
         resize_message_container.empty() # Clear resize messages
 
-        # Keep the preview container visible with min-height even when empty
-        preview_container.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
+        # Ensure preview container is empty (collapsed) before generation
+        preview_container.empty()
         # Display the download button right after upload if files are present (even before generation)
         if uploaded_files:
              with download_buttons_container:
