@@ -4,9 +4,9 @@ import numpy as np
 import io
 import zipfile
 import base64
-import sys # Added for error logging
-import os # For filename manipulation
-import time # Added for simulating loading
+import sys
+import os
+import time
 
 # --- Page Setup ---
 st.set_page_config(layout="wide")
@@ -19,8 +19,10 @@ spinner_container = st.empty()
 preview_container = st.container()
 # Container for download buttons (ZIP only now)
 download_buttons_container = st.container()
-# Container for displaying file processing status
-processing_status_container = st.empty()
+# Container for the animated preloader below previews
+preloader_container = st.empty()
+# Container to display uploaded file names
+uploaded_files_display_container = st.empty()
 
 
 # --- CSS for responsive columns and general styling ---
@@ -97,6 +99,36 @@ st.markdown("""
     /* Ensure download buttons have some space */
     .stDownloadButton {
         margin-top: 10px;
+    }
+    /* CSS for scrollable uploaded files list */
+    .uploaded-files-list-container {
+        max-height: 200px; /* Set a max height */
+        overflow-y: auto; /* Enable vertical scrolling */
+        border: 1px solid #e0e0e0;
+        border-radius: 5px;
+        padding: 10px;
+        margin-top: 10px;
+    }
+    .uploaded-files-list-container p {
+        margin: 5px 0; /* Space between file names */
+        font-size: 14px;
+        color: #555;
+    }
+
+    /* CSS for the animated preloader */
+    .preloader {
+        border: 4px solid #f3f3f3; /* Light grey */
+        border-top: 4px solid #3498db; /* Blue */
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto; /* Center the preloader */
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -303,7 +335,8 @@ with col1:
     uploaded_files = st.file_uploader(
         "Choose images",
         accept_multiple_files=True,
-        type=allowed_types
+        type=allowed_types,
+        key="file_uploader" # Added a key
     )
 
     valid_files_after_upload = []
@@ -315,6 +348,18 @@ with col1:
             else:
                 valid_files_after_upload.append(file_obj)
         uploaded_files = valid_files_after_upload
+
+    # Display uploaded file names in a scrollable container
+    if uploaded_files:
+        with uploaded_files_display_container.container():
+            st.markdown("<div class='uploaded-files-list-container'>", unsafe_allow_html=True)
+            st.write("Uploaded Files:")
+            for file in uploaded_files:
+                st.markdown(f"<p>- {file.name}</p>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        uploaded_files_display_container.empty() # Clear the container if no files are uploaded
+
 
     st.subheader("Download Options")
     resize_option = st.radio("Resize method", ["Original size", "Scale (%)"], index=0, key="resize_option")
@@ -375,6 +420,9 @@ if uploaded_files and positions:
     st.markdown("---")
     st.subheader("Previews")
 
+    # Display preloader before processing
+    preloader_container.markdown("<div class='preloader'></div>", unsafe_allow_html=True)
+
     # Move spinner here, under the "Previews" header
     with spinner_container, st.spinner("Generating previews..."):
         preview_display_area = preview_container.empty() # Prepare the area for previews
@@ -382,18 +430,10 @@ if uploaded_files and positions:
         individual_preview_html_parts = []
         zip_buffer = io.BytesIO()
 
-        # List to track processing status of each file
-        file_processing_statuses = {file_obj.name: "Pending" for file_obj in uploaded_files}
-
         # Use compresslevel=0 (ZIP_STORED) for speed, as images are already compressed.
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, compresslevel=0) as zipf:
             for file_idx, uploaded_file_obj in enumerate(uploaded_files):
                 file_name = uploaded_file_obj.name
-                file_processing_statuses[file_name] = "Processing..."
-                # Update the processing status display
-                status_text = "\n".join([f"- {name}: {status}" for name, status in file_processing_statuses.items()])
-                processing_status_container.text(f"Processing Queue:\n{status_text}")
-
 
                 try:
                     uploaded_file_bytes = uploaded_file_obj.getvalue()
@@ -404,18 +444,15 @@ if uploaded_files and positions:
                     image = Image.open(image_stream_for_load)
                 except UnidentifiedImageError:
                     st.warning(f"Could not identify image file: `{file_name}`. Skipped.")
-                    file_processing_statuses[file_name] = "Skipped (Invalid Image)"
                     continue
                 except Exception as e:
                     st.warning(f"`{file_name}` could not be loaded or is corrupted ({e}). Skipped.")
-                    file_processing_statuses[file_name] = f"Skipped (Error: {e})"
                     continue
 
                 try:
                     w, h = image.size
                     if not (10 <= w <= 10000 and 10 <= h <= 10000):
                         st.warning(f"`{file_name}` has an unsupported resolution ({w}x{h}). Skipped.")
-                        file_processing_statuses[file_name] = "Skipped (Unsupported Resolution)"
                         continue
                     if image.mode not in ("RGB", "L"):
                          image = image.convert("RGB")
@@ -425,7 +462,6 @@ if uploaded_files and positions:
                         pass
                 except Exception as e:
                     st.error(f"Error processing `{file_name}`: {e}. Skipped.")
-                    file_processing_statuses[file_name] = f"Skipped (Error: {e})"
                     continue
 
                 border_px = int(image.width * (border_thickness_percent / 100))
@@ -497,17 +533,12 @@ if uploaded_files and positions:
                     except Exception as e_layout:
                         st.error(f"Error creating layout for {file_name} (pos: {pos}): {e_layout}")
 
-                # Mark the file as done after processing all positions
-                file_processing_statuses[file_name] = "Done"
-                status_text = "\n".join([f"- {name}: {status}" for name, status in file_processing_statuses.items()])
-                processing_status_container.text(f"Processing Queue:\n{status_text}")
-
 
         zip_buffer.seek(0)
         # Clear spinner after processing is done
         spinner_container.empty()
-        # Clear processing status display after all files are done
-        processing_status_container.empty()
+        # Clear preloader after processing is done
+        preloader_container.empty()
 
 
     # --- Download Buttons (Only ZIP now) ---
@@ -533,14 +564,16 @@ elif uploaded_files and not positions:
     preview_container.empty()
     download_buttons_container.empty()
     spinner_container.empty()
-    processing_status_container.empty()
+    preloader_container.empty()
+    uploaded_files_display_container.empty() # Clear uploaded files display
 elif not uploaded_files:
     st.info("Upload images to get started.")
     # Clear previews and buttons if no files are uploaded
     preview_container.empty()
     download_buttons_container.empty()
     spinner_container.empty()
-    processing_status_container.empty()
+    preloader_container.empty()
+    uploaded_files_display_container.empty() # Clear uploaded files display
 
 # Initially disable the download button if no files are uploaded or positions selected
 if not uploaded_files or not positions:
