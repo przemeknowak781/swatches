@@ -21,9 +21,9 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
     border = border_thickness
 
     if position in ['top', 'bottom']:
-        canvas = Image.new("RGB", (img_w + 2*border, img_h + swatch_size + 2*border), border_color)
+        canvas = Image.new("RGB", (img_w + 2 * border, img_h + swatch_size + 2 * border), border_color)
     else:
-        canvas = Image.new("RGB", (img_w + swatch_size + 2*border, img_h + 2*border), border_color)
+        canvas = Image.new("RGB", (img_w + swatch_size + 2 * border, img_h + 2 * border), border_color)
 
     image_position = {
         'top': (border, swatch_size + border),
@@ -36,7 +36,7 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
     draw = ImageDraw.Draw(canvas)
     if position in ['top', 'bottom']:
         swatch_width = image.width // len(colors)
-        y_offset = border if position == 'top' else border + image.height
+        y_offset = border if position == 'top' else border + img_h
         for i, color in enumerate(colors):
             x0 = border + i * swatch_width
             x1 = border + (i + 1) * swatch_width
@@ -45,29 +45,29 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
             if not remove_adjacent_border or i != 0:
                 draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            if not remove_adjacent_border or i != len(colors)-1:
+            if not remove_adjacent_border or i != len(colors) - 1:
                 draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            if not remove_adjacent_border or position == 'bottom':
-                draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
-            if not remove_adjacent_border or position == 'top':
-                draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
+            draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
     else:
-        swatch_height = image.height // len(colors)
-        x_offset = border if position == 'left' else border + image.width
+        swatch_height = img_h // len(colors)
+        y_offset = border
         for i, color in enumerate(colors):
-            y0 = border + i * swatch_height
-            y1 = border + (i + 1) * swatch_height
-            x0 = x_offset - swatch_size if position == 'left' else x_offset
-            x1 = x0 + swatch_size
+            y0 = y_offset + i * swatch_height
+            y1 = y_offset + (i + 1) * swatch_height
+            if position == 'left':
+                x1 = border
+                x0 = x1 - swatch_size
+            else:  # right
+                x0 = border + img_w
+                x1 = x0 + swatch_size
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
             if not remove_adjacent_border or i != 0:
                 draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
-            if not remove_adjacent_border or i != len(colors)-1:
+            if not remove_adjacent_border or i != len(colors) - 1:
                 draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            if not remove_adjacent_border or position == 'right':
-                draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            if not remove_adjacent_border or position == 'left':
-                draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
 
     return canvas
 
