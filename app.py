@@ -81,11 +81,11 @@ positions = st.multiselect(
 
 num_colors = st.slider("Number of swatches (dominant colors)", min_value=2, max_value=12, value=6)
 swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
-border_thickness = st.slider("Border thickness (in % of image width)", min_value=1, max_value=10, value=2)
-swatch_border_thickness = st.slider("Swatch border thickness (in px)", min_value=0, max_value=10, value=1)
+border_thickness = st.slider("Border thickness (in % of image width)", min_value=1, max_value=10, value=5)
+swatch_border_thickness = st.slider("Swatch border thickness (in px)", min_value=0, max_value=10, value=5)
 border_color = st.color_picker("Image border color", value="#FFFFFF")
-swatch_border_color = st.color_picker("Swatch border color", value="#000000")
-remove_adjacent_border = st.checkbox("Remove swatch border edges touching outer canvas edge", value=False)
+swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
+remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
 
 if uploaded_files and positions:
     zip_buffer = io.BytesIO()
@@ -110,7 +110,7 @@ if uploaded_files and positions:
                     result_img.save(buffer, format="PNG")
                     img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-                block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; background: white;'>"
+                block = f"<div style='flex: 0 0 auto; text-align: center; width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; background: #eeeeee;'>"
                 block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
                 block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
                 block += "</div>"
