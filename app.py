@@ -625,8 +625,9 @@ try:
         # Removed the "Previews" subheader
         # st.subheader("Previews")
 
-        # Initialize preview_display_area here unconditionally
-        preview_display_area = preview_container.empty()
+        # Always render the preview container structure once files and positions are selected
+        # This prevents collapse during slider adjustments
+        preview_display_area = preview_container.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
 
         # Determine which images/layouts to generate based on the stage
         images_to_process = []
@@ -885,15 +886,17 @@ try:
 
 
         # --- Display Previews and Buttons based on Stage ---
-        # Display the generated previews
+        # Display the generated previews within the already rendered container
         if st.session_state.preview_html_parts:
-            preview_display_area.markdown(
-                "<div id='preview-zone'>" + "\n".join(st.session_state.preview_html_parts) + "</div>",
-                unsafe_allow_html=True
-            )
+             # Use a new container specifically for the preview HTML content
+             preview_content_area = preview_container.empty()
+             preview_content_area.markdown(
+                 "<div id='preview-zone'>" + "\n".join(st.session_state.preview_html_parts) + "</div>",
+                 unsafe_allow_html=True
+             )
         else:
-             # Keep the preview container visible with min-height even when empty
-             preview_display_area.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
+             # If no preview parts, ensure the container is still rendered with min-height
+             preview_container.markdown("<div id='preview-zone'></div>", unsafe_allow_html=True)
 
 
         # Display the "Generate Full Batch" button if in preview stage
