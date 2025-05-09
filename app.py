@@ -26,36 +26,33 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
         canvas = Image.new("RGB", (img_w + swatch_size + 2*border, img_h + 2*border), border_color)
 
     # Paste image
-    if position == 'top':
-        canvas.paste(image, (border, swatch_size + border))
-        swatch_y = border + swatch_border_thickness  # bottom of swatch aligns with image top
-    elif position == 'bottom':
-        canvas.paste(image, (border, border + swatch_size))
-        swatch_y = border  # top of swatch aligns with image bottom
-    elif position == 'left':
-        canvas.paste(image, (swatch_size + border, border))
-        swatch_x = border + swatch_border_thickness  # right of swatch aligns with image left
-    elif position == 'right':
-        canvas.paste(image, (border, border))
-        swatch_x = border + img_w - swatch_size - swatch_border_thickness  # left of swatch aligns with image right
+    image_position = {
+        'top': (border, swatch_size + border),
+        'bottom': (border, border),
+        'left': (swatch_size + border, border),
+        'right': (border, border),
+    }
+    canvas.paste(image, image_position[position])
 
     draw = ImageDraw.Draw(canvas)
     if position in ['top', 'bottom']:
         swatch_width = image.width // len(colors)
+        y_offset = border if position == 'top' else border + image.height
         for i, color in enumerate(colors):
             x0 = border + i * swatch_width
             x1 = border + (i + 1) * swatch_width
-            y0 = swatch_y
-            y1 = swatch_y + swatch_size
+            y0 = y_offset - swatch_size if position == 'top' else y_offset
+            y1 = y0 + swatch_size
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
             draw.rectangle([x0, y0, x1, y1], outline=swatch_border_color, width=swatch_border_thickness)
     else:
         swatch_height = image.height // len(colors)
+        x_offset = border if position == 'left' else border + image.width
         for i, color in enumerate(colors):
             y0 = border + i * swatch_height
             y1 = border + (i + 1) * swatch_height
-            x0 = swatch_x
-            x1 = swatch_x + swatch_size
+            x0 = x_offset - swatch_size if position == 'left' else x_offset
+            x1 = x0 + swatch_size
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
             draw.rectangle([x0, y0, x1, y1], outline=swatch_border_color, width=swatch_border_thickness)
 
