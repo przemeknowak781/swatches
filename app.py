@@ -124,11 +124,21 @@ with col1:
 
 with col2:
     st.subheader("Layout Settings")
-    positions = st.multiselect(
-    "Swatch position(s):",
-    options=["top", "bottom", "left", "right"],
-    default=["bottom"]
-)
+    positions = []
+st.write("Swatch position(s):")
+cols = st.columns(4)
+with cols[0]:
+    if st.toggle("Top", key="pos_top"):
+        positions.append("top")
+with cols[1]:
+    if st.toggle("Bottom", value=True, key="pos_bottom"):
+        positions.append("bottom")
+with cols[2]:
+    if st.toggle("Left", key="pos_left"):
+        positions.append("left")
+with cols[3]:
+    if st.toggle("Right", key="pos_right"):
+        positions.append("right")
     num_colors = st.slider("Number of swatches", min_value=2, max_value=12, value=6)
     swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
 
