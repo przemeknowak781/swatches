@@ -99,17 +99,19 @@ with col1:
     allowed_types = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif"]
     uploaded_files = st.file_uploader(
         "Upload images",
-        type=allowed_types,
         accept_multiple_files=True
     )
 
-    # Early validation and user feedback for invalid files
+    # Early validation and user feedback for invalid extensions
     if uploaded_files:
+        valid_extensions = (".jpg", ".jpeg", ".png", ".webp", ".jfif", ".bmp", ".tiff", ".tif")
+        filtered_files = []
         for file in uploaded_files:
-            try:
-                Image.open(file)
-            except Exception:
-                st.warning(f"⚠️ `{file.name}` is not a valid image file and will be skipped.")
+            if not file.name.lower().endswith(valid_extensions):
+                st.warning(f"⚠️ `{file.name}` has unsupported extension. Skipped.")
+            else:
+                filtered_files.append(file)
+        uploaded_files = filtered_files
 
     st.subheader("Download Options")
     resize_option = st.radio("Resize method", ["Original size", "Scale (%)"], index=0)
