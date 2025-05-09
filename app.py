@@ -24,34 +24,35 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
     else:
         canvas = Image.new("RGB", (img_w + swatch_size + 2*border, img_h + 2*border), border_color)
 
+    # Draw image
     if position == 'top':
         canvas.paste(image, (border, swatch_size + border))
-        swatch_origin_x, swatch_origin_y = border, border
     elif position == 'bottom':
         canvas.paste(image, (border, border))
-        swatch_origin_x, swatch_origin_y = border, img_h + border
     elif position == 'left':
         canvas.paste(image, (swatch_size + border, border))
-        swatch_origin_x, swatch_origin_y = border, border
     elif position == 'right':
         canvas.paste(image, (border, border))
-        swatch_origin_x, swatch_origin_y = img_w + border, border
 
     draw = ImageDraw.Draw(canvas)
     if position in ['top', 'bottom']:
         swatch_width = image.width // len(colors)
+        x_offset = border
+        y_offset = border if position == 'top' else border + img_h
         for i, color in enumerate(colors):
-            x0 = swatch_origin_x + i * swatch_width
-            y0 = swatch_origin_y
+            x0 = x_offset + i * swatch_width
+            y0 = y_offset
             x1 = x0 + swatch_width
             y1 = y0 + swatch_size
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
             draw.rectangle([x0, y0, x1, y1], outline=swatch_border_color, width=swatch_border_thickness)
     else:
         swatch_height = image.height // len(colors)
+        x_offset = border if position == 'left' else border + img_w
+        y_offset = border
         for i, color in enumerate(colors):
-            x0 = swatch_origin_x
-            y0 = swatch_origin_y + i * swatch_height
+            x0 = x_offset
+            y0 = y_offset + i * swatch_height
             x1 = x0 + swatch_size
             y1 = y0 + swatch_height
             draw.rectangle([x0, y0, x1, y1], fill=tuple(color))
