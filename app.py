@@ -243,7 +243,8 @@ if uploaded_files and positions:
                     html_block += "</div>"
                     preview_html_blocks.append(html_block)
 
-        full_html = """
+        full_html = (
+            """
             <style>
             #preview-zone {
                 display: flex;
@@ -254,8 +255,10 @@ if uploaded_files and positions:
             }
             </style>
             <div id='preview-zone'>
-            """ + "
-".join(preview_html_blocks) + "</div>"
+            """
+            + "\n".join(preview_html_blocks) +
+            "</div>"
+        )
         placeholder.markdown(full_html, unsafe_allow_html=True)
         zip_buffer.seek(0)
 
