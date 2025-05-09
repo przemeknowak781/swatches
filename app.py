@@ -15,7 +15,6 @@ def extract_palette(image, num_colors=6):
     return kmeans.cluster_centers_.astype(int)
 
 # Drawing function
-
 def draw_layout(image, colors, position, border_thickness, swatch_border_thickness, border_color, swatch_border_color, swatch_size, remove_adjacent_border):
     img_w, img_h = image.size
     border = border_thickness
@@ -47,14 +46,15 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
                 draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
             if not remove_adjacent_border or i != len(colors) - 1:
                 draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
-            draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            if not remove_adjacent_border or position == 'bottom':
+                draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
+            if not remove_adjacent_border or position == 'top':
+                draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
     else:
-        swatch_height = img_h // len(colors)
-        y_offset = border
+        swatch_height = image.height // len(colors)
         for i, color in enumerate(colors):
-            y0 = y_offset + i * swatch_height
-            y1 = y_offset + (i + 1) * swatch_height
+            y0 = border + i * swatch_height
+            y1 = border + (i + 1) * swatch_height
             if position == 'left':
                 x1 = border
                 x0 = x1 - swatch_size
@@ -66,8 +66,10 @@ def draw_layout(image, colors, position, border_thickness, swatch_border_thickne
                 draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness)
             if not remove_adjacent_border or i != len(colors) - 1:
                 draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
-            draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            if not remove_adjacent_border or position == 'right':
+                draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness)
+            if not remove_adjacent_border or position == 'left':
+                draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness)
 
     return canvas
 
