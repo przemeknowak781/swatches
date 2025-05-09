@@ -238,13 +238,11 @@ if uploaded_files and positions:
                     html_block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
                     html_block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
                     html_block += "</div>"
-                    placeholder = preview_container.container()
-                    placeholder.markdown(html_block, unsafe_allow_html=True)
+                    placeholder.markdown(html_block, unsafe_allow_html=True)er.markdown(html_block, unsafe_allow_html=True)
 
         zip_buffer.seek(0)
 
-        
-            st.download_button(
+    st.download_button(
                 f"📦 Download all as ZIP ({extension.upper()})",
                 zip_buffer,
                 file_name=f"swatches.{extension}.zip",
