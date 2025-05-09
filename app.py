@@ -342,18 +342,22 @@ def draw_layout(image, colors, position, all_border_thickness_px,
             if position in ['top', 'bottom']:
                 # Draw left border for swatches after the first one if not removing adjacent
                 if i > 0 and not remove_adjacent_border:
-                    draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness_px)
+                    # Use half thickness for lines *between* swatches
+                    draw.line([(x0, y0), (x0, y1)], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
                 # Always draw the right border of the swatch if it's not the last one
                 if i < len(colors) - 1:
-                     draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness_px)
+                     # Use half thickness for lines *between* swatches
+                     draw.line([(x1, y0), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
 
             else: # 'left' or 'right'
                 # Draw top border for swatches after the first one if not removing adjacent
                 if i > 0 and not remove_adjacent_border:
-                    draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness_px)
+                    # Use half thickness for lines *between* swatches
+                    draw.line([(x0, y0), (x1, y0)], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
                 # Always draw the bottom border of the swatch if it's not the last one
                 if i < len(colors) - 1:
-                     draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness_px)
+                     # Use half thickness for lines *between* swatches
+                     draw.line([(x0, y1), (x1, y1)], fill=swatch_border_color, width=swatch_border_thickness_px // 2)
 
 
     # --- Draw Main Border Around the Entire Canvas ---
@@ -482,7 +486,7 @@ with col3:
     st.subheader("Borders")
 
     # Single slider for all border thicknesses in pixels
-    all_border_thickness_px_val = st.slider("All Border Thickness (px)", 0, 20, 0, key="all_border_thickness_px")
+    all_border_thickness_px_val = st.slider("All Border Thickness (px)", 0, 200, 0, key="all_border_thickness_px")
 
     border_color = st.color_picker("Main Border Color", "#FFFFFF", key="border_color")
     swatch_border_color = st.color_picker("Swatch Border Color", "#FFFFFF", key="swatch_border_color") # Default color changed to white
@@ -661,7 +665,7 @@ if uploaded_files and positions:
             except Exception as e:
                 st.error(f"Error processing `{file_name}`: {e}. Skipped.")
                 processed_files_count += len(positions) # Increment count for skipped file
-                # Update preloader text for skipped file
+                # Update preloader text for progress
                 preloader_and_status_container.markdown(f"""
                     <div class='preloader-area'>
                         <div class='preloader'></div>
