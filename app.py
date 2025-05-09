@@ -176,8 +176,18 @@ if uploaded_files and positions:
 
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zipf:
             preview_html_blocks = []
-            preview_container.markdown("### Preview")
-            preview_container.markdown("<div id='preview-zone' style='display: flex; overflow-x: auto; gap: 30px; padding: 20px;'>", unsafe_allow_html=True)
+            preview_container.markdown("""
+            <style>
+            #preview-zone {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                gap: 30px;
+                padding: 20px;
+            }
+            </style>
+            <div id='preview-zone'>
+            """, unsafe_allow_html=True)
 
             for uploaded_file in uploaded_files:
                 try:
@@ -228,7 +238,7 @@ if uploaded_files and positions:
                     html_block += f"<div style='font-size: 12px; margin-bottom: 5px;'>{name}</div>"
                     html_block += f"<img src='data:image/png;base64,{img_base64}' width='200'>"
                     html_block += "</div>"
-                    preview_container.markdown(html_block, unsafe_allow_html=True)
+                    st.markdown(html_block, unsafe_allow_html=True)
 
         zip_buffer.seek(0)
 
