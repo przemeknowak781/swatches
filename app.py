@@ -13,16 +13,14 @@ st.set_page_config(layout="wide")
 st.title("Color Swatch Generator")
 
 # --- Global containers for dynamic content ---
-# Container for the "Generating previews..." spinner
-spinner_container = st.empty()
+# Container for the "Generating previews..." spinner (can be removed or repurposed)
+spinner_container = st.empty() # Keeping for now, might be useful later
 # Main container for the previews
 preview_container = st.container()
 # Container for download buttons (ZIP only now)
 download_buttons_container = st.container()
-# Container for the animated preloader below previews
-preloader_container = st.empty()
-# Container to display uploaded file names
-uploaded_files_display_container = st.empty()
+# Container for the animated preloader and status text
+preloader_and_status_container = st.empty()
 
 
 # --- CSS for responsive columns and general styling ---
@@ -47,6 +45,7 @@ st.markdown("""
         border-radius: 8px;
         min-height: 250px; /* Ensure it has some height even when empty */
         align-items: flex-start; /* Align items to the top */
+        margin-bottom: 20px; /* Space below the preview zone */
     }
     /* Styles for individual preview items */
     .preview-item {
@@ -65,7 +64,7 @@ st.markdown("""
     .preview-item img {
         width: 100%; /* Image takes full available width within .preview-item */
         height: auto;     /* Maintain aspect ratio */
-        border-radius: 4px;
+        border-radius: 44px; /* Slightly more rounded corners for images */
         margin-bottom: 8px; /* Space below the image */
         object-fit: contain; /* Scale image to fit container while maintaining aspect ratio */
         max-height: 180px; /* Limit image height to keep preview items consistent */
@@ -108,6 +107,7 @@ st.markdown("""
         border-radius: 5px;
         padding: 10px;
         margin-top: 10px;
+        margin-bottom: 10px; /* Add space below the list */
     }
     .uploaded-files-list-container p {
         margin: 5px 0; /* Space between file names */
@@ -115,7 +115,14 @@ st.markdown("""
         color: #555;
     }
 
-    /* CSS for the animated preloader */
+    /* CSS for the animated preloader and text */
+    .preloader-area {
+        display: flex;
+        align-items: center;
+        justify-content: center; /* Center the content */
+        margin: 20px auto; /* Center the container */
+        min-height: 40px; /* Ensure it has some height */
+    }
     .preloader {
         border: 4px solid #f3f3f3; /* Light grey */
         border-top: 4px solid #3498db; /* Blue */
@@ -123,7 +130,11 @@ st.markdown("""
         width: 30px;
         height: 30px;
         animation: spin 1s linear infinite;
-        margin: 20px auto; /* Center the preloader */
+        margin-right: 15px; /* Space between spinner and text */
+    }
+    .preloader-text {
+        font-size: 16px;
+        color: #555;
     }
 
     @keyframes spin {
@@ -420,125 +431,131 @@ if uploaded_files and positions:
     st.markdown("---")
     st.subheader("Previews")
 
-    # Display preloader before processing
-    preloader_container.markdown("<div class='preloader'></div>", unsafe_allow_html=True)
+    # Display preloader and status text before processing
+    preloader_and_status_container.markdown("""
+        <div class='preloader-area'>
+            <div class='preloader'></div>
+            <span class='preloader-text'>Generating in progress...</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Move spinner here, under the "Previews" header
-    with spinner_container, st.spinner("Generating previews..."):
-        preview_display_area = preview_container.empty() # Prepare the area for previews
 
-        individual_preview_html_parts = []
-        zip_buffer = io.BytesIO()
+    # Move spinner here, under the "Previews" header (optional, preloader is main indicator)
+    # with spinner_container, st.spinner("Processing images..."): # Can uncomment if desired
+    preview_display_area = preview_container.empty() # Prepare the area for previews
 
-        # Use compresslevel=0 (ZIP_STORED) for speed, as images are already compressed.
-        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, compresslevel=0) as zipf:
-            for file_idx, uploaded_file_obj in enumerate(uploaded_files):
-                file_name = uploaded_file_obj.name
+    individual_preview_html_parts = []
+    zip_buffer = io.BytesIO()
 
+    # Use compresslevel=0 (ZIP_STORED) for speed, as images are already compressed.
+    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, compresslevel=0) as zipf:
+        for file_idx, uploaded_file_obj in enumerate(uploaded_files):
+            file_name = uploaded_file_obj.name
+
+            try:
+                uploaded_file_bytes = uploaded_file_obj.getvalue()
+                image_stream_for_verify = io.BytesIO(uploaded_file_bytes)
+                test_image = Image.open(image_stream_for_verify)
+                test_image.verify()
+                image_stream_for_load = io.BytesIO(uploaded_file_bytes)
+                image = Image.open(image_stream_for_load)
+            except UnidentifiedImageError:
+                st.warning(f"Could not identify image file: `{file_name}`. Skipped.")
+                continue
+            except Exception as e:
+                st.warning(f"`{file_name}` could not be loaded or is corrupted ({e}). Skipped.")
+                continue
+
+            try:
+                w, h = image.size
+                if not (10 <= w <= 10000 and 10 <= h <= 10000):
+                    st.warning(f"`{file_name}` has an unsupported resolution ({w}x{h}). Skipped.")
+                    continue
+                if image.mode not in ("RGB", "L"):
+                     image = image.convert("RGB")
+                palette = extract_palette(image, num_colors, quantize_method=quantize_method_selected)
+                if not palette:
+                    # st.warning(f"Failed to extract palette for `{file_name}`. Skipping swatches.") # Less verbose
+                    pass
+            except Exception as e:
+                st.error(f"Error processing `{file_name}`: {e}. Skipped.")
+                continue
+
+            border_px = int(image.width * (border_thickness_percent / 100))
+
+            for pos_idx, pos in enumerate(positions):
                 try:
-                    uploaded_file_bytes = uploaded_file_obj.getvalue()
-                    image_stream_for_verify = io.BytesIO(uploaded_file_bytes)
-                    test_image = Image.open(image_stream_for_verify)
-                    test_image.verify()
-                    image_stream_for_load = io.BytesIO(uploaded_file_bytes)
-                    image = Image.open(image_stream_for_load)
-                except UnidentifiedImageError:
-                    st.warning(f"Could not identify image file: `{file_name}`. Skipped.")
-                    continue
-                except Exception as e:
-                    st.warning(f"`{file_name}` could not be loaded or is corrupted ({e}). Skipped.")
-                    continue
+                    result_img = draw_layout(
+                        image.copy(), palette, pos, border_px, swatch_border_thickness,
+                        border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
+                    )
 
-                try:
-                    w, h = image.size
-                    if not (10 <= w <= 10000 and 10 <= h <= 10000):
-                        st.warning(f"`{file_name}` has an unsupported resolution ({w}x{h}). Skipped.")
-                        continue
-                    if image.mode not in ("RGB", "L"):
-                         image = image.convert("RGB")
-                    palette = extract_palette(image, num_colors, quantize_method=quantize_method_selected)
-                    if not palette:
-                        # st.warning(f"Failed to extract palette for `{file_name}`. Skipping swatches.") # Less verbose
-                        pass
-                except Exception as e:
-                    st.error(f"Error processing `{file_name}`: {e}. Skipped.")
-                    continue
+                    if resize_option == "Scale (%)" and scale_percent != 100:
+                        new_w = int(result_img.width * scale_percent / 100)
+                        new_h = int(result_img.height * scale_percent / 100)
+                        if new_w > 0 and new_h > 0:
+                            result_img = result_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                        else:
+                            st.warning(f"Cannot resize {file_name}_{pos}. Using original size.")
 
-                border_px = int(image.width * (border_thickness_percent / 100))
+                    img_byte_arr = io.BytesIO()
+                    base_name, original_extension = os.path.splitext(file_name) # Use os.path.splitext
+                    safe_base_name = "".join(c if c.isalnum() or c in (' ', '.', '_', '-') else '_' for c in base_name).rstrip()
+                    name_for_file = f"{safe_base_name}_{pos}.{extension}" # Consistent naming
 
-                for pos_idx, pos in enumerate(positions):
-                    try:
-                        result_img = draw_layout(
-                            image.copy(), palette, pos, border_px, swatch_border_thickness,
-                            border_color, swatch_border_color, swatch_size_percent_val, remove_adjacent_border
-                        )
+                    save_params = {}
+                    if img_format == "JPEG": save_params['quality'] = 95
+                    elif img_format == "WEBP":
+                        save_params['quality'] = 85
+                        if webp_lossless:
+                            save_params['lossless'] = True
+                            save_params['quality'] = 100
 
-                        if resize_option == "Scale (%)" and scale_percent != 100:
-                            new_w = int(result_img.width * scale_percent / 100)
-                            new_h = int(result_img.height * scale_percent / 100)
-                            if new_w > 0 and new_h > 0:
-                                result_img = result_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                            else:
-                                st.warning(f"Cannot resize {file_name}_{pos}. Using original size.")
+                    # Save the full-size image for download
+                    result_img.save(img_byte_arr, format=img_format, **save_params)
+                    img_bytes_for_download = img_byte_arr.getvalue()
 
-                        img_byte_arr = io.BytesIO()
-                        base_name, original_extension = os.path.splitext(file_name) # Use os.path.splitext
-                        safe_base_name = "".join(c if c.isalnum() or c in (' ', '.', '_', '-') else '_' for c in base_name).rstrip()
-                        name_for_file = f"{safe_base_name}_{pos}.{extension}" # Consistent naming
+                    # Add to ZIP file
+                    zipf.writestr(name_for_file, img_bytes_for_download)
 
-                        save_params = {}
-                        if img_format == "JPEG": save_params['quality'] = 95
-                        elif img_format == "WEBP":
-                            save_params['quality'] = 85
-                            if webp_lossless:
-                                save_params['lossless'] = True
-                                save_params['quality'] = 100
+                    # Create a thumbnail for the preview
+                    preview_img_for_display = result_img.copy()
+                    # Resize thumbnail to fit the preview item width, maintaining aspect ratio
+                    preview_img_for_display.thumbnail((200, 200)) # Adjusted thumbnail size
+                    with io.BytesIO() as buffer_display:
+                        # Save preview thumbnail as PNG for consistent display
+                        preview_img_for_display.save(buffer_display, format="PNG")
+                        img_base64 = base64.b64encode(buffer_display.getvalue()).decode("utf-8")
 
-                        # Save the full-size image for download
-                        result_img.save(img_byte_arr, format=img_format, **save_params)
-                        img_bytes_for_download = img_byte_arr.getvalue()
+                    # Encode the full-size image for the download link
+                    img_base64_download = base64.b64encode(img_bytes_for_download).decode("utf-8")
+                    download_mime_type = f"image/{extension}" # Mime type for the download link
 
-                        # Add to ZIP file
-                        zipf.writestr(name_for_file, img_bytes_for_download)
+                    # Shorten filename for display
+                    display_name = shorten_filename(name_for_file, max_len=25, front_chars=10, back_chars=10)
 
-                        # Create a thumbnail for the preview
-                        preview_img_for_display = result_img.copy()
-                        # Resize thumbnail to fit the preview item width, maintaining aspect ratio
-                        preview_img_for_display.thumbnail((200, 200)) # Adjusted thumbnail size
-                        with io.BytesIO() as buffer_display:
-                            # Save preview thumbnail as PNG for consistent display
-                            preview_img_for_display.save(buffer_display, format="PNG")
-                            img_base64 = base64.b64encode(buffer_display.getvalue()).decode("utf-8")
+                    # Construct HTML for individual preview item with download link
+                    single_item_html = f"<div class='preview-item'>"
+                    single_item_html += f"<div class='preview-item-name' title='{name_for_file}'>{display_name}</div>" # Add full name as title
+                    single_item_html += f"<img src='data:image/png;base64,{img_base64}' alt='Preview of {name_for_file}'>"
+                    # Add the download link
+                    single_item_html += f"<a href='data:{download_mime_type};base64,{img_base64_download}' download='{name_for_file}' class='download-link'>Download</a>"
+                    single_item_html += "</div>"
+                    individual_preview_html_parts.append(single_item_html)
 
-                        # Encode the full-size image for the download link
-                        img_base64_download = base64.b64encode(img_bytes_for_download).decode("utf-8")
-                        download_mime_type = f"image/{extension}" # Mime type for the download link
+                    # Update the preview area dynamically
+                    current_full_html_content = ("<div id='preview-zone'>" + "\n".join(individual_preview_html_parts) + "</div>")
+                    preview_display_area.markdown(current_full_html_content, unsafe_allow_html=True)
 
-                        # Shorten filename for display
-                        display_name = shorten_filename(name_for_file, max_len=25, front_chars=10, back_chars=10)
-
-                        # Construct HTML for individual preview item with download link
-                        single_item_html = f"<div class='preview-item'>"
-                        single_item_html += f"<div class='preview-item-name' title='{name_for_file}'>{display_name}</div>" # Add full name as title
-                        single_item_html += f"<img src='data:image/png;base64,{img_base64}' alt='Preview of {name_for_file}'>"
-                        # Add the download link
-                        single_item_html += f"<a href='data:{download_mime_type};base64,{img_base64_download}' download='{name_for_file}' class='download-link'>Download</a>"
-                        single_item_html += "</div>"
-                        individual_preview_html_parts.append(single_item_html)
-
-                        # Update the preview area dynamically
-                        current_full_html_content = ("<div id='preview-zone'>" + "\n".join(individual_preview_html_parts) + "</div>")
-                        preview_display_area.markdown(current_full_html_content, unsafe_allow_html=True)
-
-                    except Exception as e_layout:
-                        st.error(f"Error creating layout for {file_name} (pos: {pos}): {e_layout}")
+                except Exception as e_layout:
+                    st.error(f"Error creating layout for {file_name} (pos: {pos}): {e_layout}")
 
 
-        zip_buffer.seek(0)
-        # Clear spinner after processing is done
-        spinner_container.empty()
-        # Clear preloader after processing is done
-        preloader_container.empty()
+    zip_buffer.seek(0)
+    # Clear spinner after processing is done
+    spinner_container.empty()
+    # Clear preloader after processing is done
+    preloader_and_status_container.empty()
 
 
     # --- Download Buttons (Only ZIP now) ---
@@ -564,7 +581,7 @@ elif uploaded_files and not positions:
     preview_container.empty()
     download_buttons_container.empty()
     spinner_container.empty()
-    preloader_container.empty()
+    preloader_and_status_container.empty()
     uploaded_files_display_container.empty() # Clear uploaded files display
 elif not uploaded_files:
     st.info("Upload images to get started.")
@@ -572,7 +589,7 @@ elif not uploaded_files:
     preview_container.empty()
     download_buttons_container.empty()
     spinner_container.empty()
-    preloader_container.empty()
+    preloader_and_status_container.empty()
     uploaded_files_display_container.empty() # Clear uploaded files display
 
 # Initially disable the download button if no files are uploaded or positions selected
