@@ -106,16 +106,9 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 20px;
     }
-    @media (min-width: 900px) {
-        .three-col-flex > div {
-            flex: 1;
-            min-width: 0;
-        }
-    }
-    @media (max-width: 899px) {
-        .three-col-flex > div {
-            width: 100%;
-        }
+    .three-col-flex > div {
+        flex: 1;
+        min-width: 300px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -126,23 +119,26 @@ preview_placeholder = st.container()
 
 st.markdown('<div class="three-col-flex">', unsafe_allow_html=True)
 
-with st.container():
-    st.subheader("Upload Images")
-    uploaded_files = st.file_uploader("Upload images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+st.markdown('<div>', unsafe_allow_html=True)
+st.subheader("Upload Images")
+uploaded_files = st.file_uploader("Upload images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-with st.container():
-    st.subheader("Layout Settings")
-    positions = st.multiselect("Swatch position(s)", ["top", "bottom", "left", "right"], default=["bottom"])
-    num_colors = st.slider("Number of swatches", min_value=2, max_value=12, value=6)
-    swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
+st.markdown('<div>', unsafe_allow_html=True)
+st.subheader("Layout Settings")
+positions = st.multiselect("Swatch position(s)", ["top", "bottom", "left", "right"], default=["bottom"])
+num_colors = st.slider("Number of swatches", min_value=2, max_value=12, value=6)
+swatch_size = st.slider("Swatch size (px)", min_value=20, max_value=200, value=100)
+st.markdown('</div>', unsafe_allow_html=True)
 
-with st.container():
-    st.subheader("Borders")
-    border_thickness = st.slider("Image border thickness (% of image width)", min_value=0, max_value=10, value=0)
-    border_color = st.color_picker("Image border color", value="#FFFFFF")
-    swatch_border_thickness = st.slider("Swatch border thickness (px)", min_value=0, max_value=50, value=5)
-    swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
-    remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
+st.markdown('<div>', unsafe_allow_html=True)
+st.subheader("Borders")
+border_thickness = st.slider("Image border thickness (% of image width)", min_value=0, max_value=10, value=0)
+border_color = st.color_picker("Image border color", value="#FFFFFF")
+swatch_border_thickness = st.slider("Swatch border thickness (px)", min_value=0, max_value=50, value=5)
+swatch_border_color = st.color_picker("Swatch border color", value="#FFFFFF")
+remove_adjacent_border = st.checkbox("Align swatches with image", value=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
