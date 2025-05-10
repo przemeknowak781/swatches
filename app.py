@@ -386,7 +386,7 @@ try:
         # File uploader first
         allowed_extensions = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif", "ico"]
         uploaded_files_from_uploader = st.file_uploader(
-            "Choose images from your device. There's no limit of uploaded files, however i recommend working on smaller batches as the app may slow down.",
+            "Choose images from your device. There's no limit of uploaded files, however I recommend batches below 200 generations to ensure app stability.",
             accept_multiple_files=True,
             type=allowed_extensions,
             key=st.session_state.file_uploader_key
