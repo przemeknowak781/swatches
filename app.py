@@ -288,8 +288,10 @@ def draw_layout(image, colors, position, image_border_thickness_px, swatch_separ
 
     if not colors:
         # If no colors extracted, just add the main border if requested
+        # Convert hex color string to RGB tuple
+        border_color_rgb = tuple(int(border_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         if main_border > 0:
-            canvas = Image.new("RGB", (img_w + 2 * main_border, img_h + 2 * main_border), border_color)
+            canvas = Image.new("RGB", (img_w + 2 * main_border, img_h + 2 * main_border), border_color_rgb)
             canvas.paste(image, (main_border, main_border))
             return canvas
         return image.copy() # Return original image if no colors and no border
@@ -955,4 +957,3 @@ except Exception as e:
     # Optionally, display traceback for debugging
     # import traceback
     # st.exception(e)
-
