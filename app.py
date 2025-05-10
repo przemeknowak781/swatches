@@ -153,7 +153,7 @@ st.markdown("""
     .buy-dev-coffee-button {
         background-color: #fff7dc !important; /* Standard BMC yellow */
         color: #000000 !important; /* Black text */
-        border: 1px solid #000000 !important;
+        border: 1px solid #ffeba9 !important;
         padding: 10px 20px !important;
         text-decoration: none !important;
         font-weight: bold !important;
@@ -162,7 +162,7 @@ st.markdown("""
         transition: background-color 0.2s ease, transform 0.2s ease !important;
     }
     .buy-dev-coffee-button:hover {
-        background-color: #f0c000 !important;
+        background-color: #ffeba9 !important;
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
     }
@@ -646,7 +646,7 @@ try:
                 <div class="post-download-message-container">
                     <p>Thank you for downloading! This app is completely free to use. Your support is greatly appreciated and helps keep it running.</p>
                     <a href="https://buymeacoffee.com/przemeknowak" target="_blank" class="buy-dev-coffee-button">
-                        Buy dev a coffee!
+                        ☕ Buy dev a coffee!
                     </a>
                 </div>
                 """, unsafe_allow_html=True)
