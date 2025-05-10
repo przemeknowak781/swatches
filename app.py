@@ -644,7 +644,7 @@ try:
             if st.session_state.get('download_completed_message', False):
                 st.markdown("""
                 <div class="post-download-message-container">
-                    <p>Thank you for using my app! It was really useful for me and I decided to share it completely free to use. If You found this app useful as well You can buy me a coffee. Even $1 will be a great motivation for further work.</p>
+                    <p>Thank you for using my app! It was really useful for me and I decided to share it completely free to use. <br> If You found this app useful as well You can buy me a coffee. Even $1 will be a great motivation for further work.</p>
                     <a href="https://buymeacoffee.com/przemeknowak" target="_blank" class="buy-dev-coffee-button">
                         ☕ Buy dev a coffee!
                     </a>
