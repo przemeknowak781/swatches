@@ -13,6 +13,10 @@ import gc # Import garbage collector
 # --- Constants ---
 MAX_PROCESSING_DIMENSION = 1920  # Max width/height for processing to reduce memory
                                 # Adjust as needed based on server capacity and desired quality
+MAX_PREVIEWS_IN_ZONE = 10 # Max previews to generate/show to avoid browser slowdown
+
+# --- Global Variables ---
+total_processed_for_preview = 0 # Counter for preview generation, needs to be global
 
 # --- Page Setup ---
 st.set_page_config(layout="wide")
@@ -50,7 +54,6 @@ generate_full_batch_button_container = st.empty()
 
 
 # --- CSS for responsive columns and general styling ---
-# (CSS remains the same as provided, truncated for brevity in this explanation)
 st.markdown("""
     <style>
     /* General layout and responsiveness */
@@ -215,16 +218,10 @@ def resize_image_if_needed(image: Image.Image, max_dim: int) -> Image.Image:
             new_height = max_dim
             new_width = int(width * (max_dim / height))
         
-        # Using LANCZOS for high-quality downsampling
-        # For WebP, Pillow might internally use different resampling filters based on version/backend
-        # but explicitly asking for LANCZOS is generally good for quality.
         try:
             resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            # st.info(f"Resized image from {width}x{height} to {new_width}x{new_height}") # Optional: for debugging
             return resized_image
         except Exception as e:
-            # st.warning(f"Could not resize image with LANCZOS, falling back to default: {e}")
-            # Fallback if LANCZOS causes issues (e.g. with certain image modes or very old Pillow)
             return image.resize((new_width, new_height)) 
     return image
 
@@ -233,55 +230,48 @@ def resize_image_if_needed(image: Image.Image, max_dim: int) -> Image.Image:
 def extract_palette(image, num_colors=6, quantize_method=Image.MEDIANCUT):
     img = image.convert("RGB") # Ensure image is in RGB for quantization
     try:
-        # Note: `kmeans=5` is not a standard parameter for MEDIANCUT or FASTOCTREE in Pillow.
-        # It might be ignored or specific to a custom/older Pillow build.
-        # If k-means quantization is desired, consider using method=Image.LIBIMAGEQUANT
-        # if Pillow is compiled with libimagequant support.
-        paletted = img.quantize(colors=num_colors, method=quantize_method, kmeans=5)
+        # Removed kmeans parameter as it's not standard for MEDIANCUT/FASTOCTREE in Pillow
+        paletted = img.quantize(colors=num_colors, method=quantize_method)
         palette_full = paletted.getpalette()
 
         if palette_full is None: # Fallback if first quantization fails
-            paletted = img.quantize(colors=num_colors, method=Image.FASTOCTREE, kmeans=5) # Again, kmeans might be ignored
+            paletted = img.quantize(colors=num_colors, method=Image.FASTOCTREE) 
             palette_full = paletted.getpalette()
-            if palette_full is None: return [] # Return empty if still no palette
+            if palette_full is None: return [] 
 
         actual_palette_colors = len(palette_full) // 3
         colors_to_extract = min(num_colors, actual_palette_colors)
         extracted_palette_rgb_values = palette_full[:colors_to_extract * 3]
         return [tuple(extracted_palette_rgb_values[i:i+3]) for i in range(0, len(extracted_palette_rgb_values), 3)]
-    except Exception as e: # Broad exception to catch various Pillow errors
-        # st.warning(f"Primary palette extraction failed: {e}. Trying simpler FASTOCTREE.")
-        try: # Simpler fallback without kmeans, ensuring it's not the cause of an error
+    except Exception as e: 
+        try: 
             paletted = img.quantize(colors=num_colors, method=Image.FASTOCTREE)
             palette = paletted.getpalette()
             if palette is None: return []
             return [tuple(palette[i:i+3]) for i in range(0, min(num_colors * 3, len(palette)), 3)]
         except Exception as final_e:
-            # st.error(f"All palette extraction attempts failed: {final_e}")
+            st.error(f"All palette extraction attempts failed for an image: {final_e}")
             return []
 
 # --- Draw Layout Function ---
-# (This function remains largely the same, but will operate on potentially smaller images)
 def draw_layout(image, colors, position,
                 image_border_percent, swatch_separator_percent, individual_swatch_border_percent,
                 border_color, swatch_border_color, swatch_size_percent_of_shorter_dim):
-    # Ensure image is mutable if it's a format like WebP that might be opened as read-only frame
-    if hasattr(image, 'is_animated') and image.is_animated:
-         # For animated images, work on the first frame or handle as per specific needs
-         # Here, we'll try to get the first frame and make it non-animated
+    # Ensure image is mutable and in a suitable mode (e.g., RGB)
+    # This helps with formats like animated GIFs (first frame) or some WebP files.
+    img_to_draw = image.copy() # Work on a copy
+
+    if hasattr(img_to_draw, 'is_animated') and img_to_draw.is_animated:
         try:
-            current_frame = image.tell()
-            image.seek(0) # Go to the first frame
-            img_copy = image.copy().convert("RGB") # Convert to RGB to remove animation context
-            image.seek(current_frame) # Restore original frame position if needed elsewhere
-            image = img_copy
-        except EOFError: # If it's a single frame animated image
-             image = image.convert("RGB")
-    elif image.format == 'WEBP': # WebP can also be tricky
-        image = image.convert("RGB")
+            img_to_draw.seek(0) # Go to the first frame
+            img_to_draw = img_to_draw.convert("RGB") 
+        except EOFError: 
+             img_to_draw = img_to_draw.convert("RGB")
+    elif img_to_draw.mode not in ("RGB", "RGBA"): # Ensure it's RGB or RGBA
+        img_to_draw = img_to_draw.convert("RGB")
 
 
-    img_w, img_h = image.size
+    img_w, img_h = img_to_draw.size
     shorter_dimension = min(img_w, img_h)
 
     image_border_thickness_px = int(shorter_dimension * (image_border_percent / 100))
@@ -297,14 +287,13 @@ def draw_layout(image, colors, position,
     if actual_swatch_size_px <= 0 and swatch_size_percent_of_shorter_dim > 0 : actual_swatch_size_px = 1
     elif actual_swatch_size_px <= 0: actual_swatch_size_px = 0
 
-    if not colors: # If no colors, just draw border if specified
+    if not colors: 
         if main_border > 0:
-            # Create a new canvas with border color, then paste the image
-            # Ensure canvas is RGB for broad compatibility
             canvas = Image.new("RGB", (img_w + 2 * main_border, img_h + 2 * main_border), border_color)
-            canvas.paste(image.convert("RGB"), (main_border, main_border)) # Convert image to RGB before paste
+            # Paste the image (ensure it's RGB if the original was RGBA with transparency)
+            canvas.paste(img_to_draw.convert("RGB"), (main_border, main_border)) 
             return canvas
-        return image.copy().convert("RGB") # Return a copy, converted to RGB
+        return img_to_draw.convert("RGB") 
 
     swatch_width = 0; swatch_height = 0
     extra_width_for_last_swatch = 0; extra_height_for_last_swatch = 0
@@ -320,7 +309,7 @@ def draw_layout(image, colors, position,
         if position == 'top':
             common_canvas_args["paste_offset_dim"] = actual_swatch_size_px + swatch_separator_thickness_px
             image_paste_y = main_border + common_canvas_args["paste_offset_dim"]
-        else: # bottom
+        else: 
             common_canvas_args["swatch_x_or_y_coord"] = main_border + img_h + swatch_separator_thickness_px
     elif position in ['left', 'right']:
         common_canvas_args["width_add"] = actual_swatch_size_px + swatch_separator_thickness_px
@@ -330,18 +319,17 @@ def draw_layout(image, colors, position,
         if position == 'left':
             common_canvas_args["paste_offset_dim"] = actual_swatch_size_px + swatch_separator_thickness_px
             image_paste_x = main_border + common_canvas_args["paste_offset_dim"]
-        else: # right
+        else: 
             common_canvas_args["swatch_x_or_y_coord"] = main_border + img_w + swatch_separator_thickness_px
-    else: # Should not happen if UI is correct
-        return image.copy().convert("RGB")
+    else: 
+        return img_to_draw.convert("RGB")
 
     canvas_w = img_w + 2 * main_border + common_canvas_args["width_add"]
     canvas_h = img_h + 2 * main_border + common_canvas_args["height_add"]
     
-    # Ensure canvas is RGB for broad compatibility
     canvas = Image.new("RGB", (canvas_w, canvas_h), border_color)
-    # Paste the original (potentially resized) image, converted to RGB
-    canvas.paste(image.convert("RGB"), (image_paste_x, image_paste_y))
+    # Paste the image (ensure it's RGB if the original was RGBA with transparency)
+    canvas.paste(img_to_draw.convert("RGB"), (image_paste_x, image_paste_y))
     draw = ImageDraw.Draw(canvas)
 
     swatch_x_current = common_canvas_args["swatch_x_or_y_coord"] if position in ['left', 'right'] else main_border
@@ -351,60 +339,50 @@ def draw_layout(image, colors, position,
         current_sw_w = swatch_width + (extra_width_for_last_swatch if i == len(colors) -1 else 0)
         current_sw_h = swatch_height + (extra_height_for_last_swatch if i == len(colors) -1 else 0)
 
-        # Ensure color_tuple is indeed a tuple of integers
         try:
             fill_color = tuple(map(int, color_tuple))
         except (ValueError, TypeError):
-            fill_color = (0,0,0) # Default to black if color is invalid
+            fill_color = (0,0,0) 
 
         if position in ['top', 'bottom']:
             rect = [swatch_x_current, swatch_y_current, swatch_x_current + current_sw_w, swatch_y_current + actual_swatch_size_px]
             draw.rectangle(rect, fill=fill_color)
-            if individual_swatch_border_thickness_px > 0 and i < len(colors) - 1: # Border between swatches
+            if individual_swatch_border_thickness_px > 0 and i < len(colors) - 1: 
                 draw.line([(rect[2], rect[1]), (rect[2], rect[3])], fill=swatch_border_color, width=individual_swatch_border_thickness_px)
             swatch_x_current += current_sw_w
-        else: # left or right
+        else: 
             rect = [swatch_x_current, swatch_y_current, swatch_x_current + actual_swatch_size_px, swatch_y_current + current_sw_h]
             draw.rectangle(rect, fill=fill_color)
-            if individual_swatch_border_thickness_px > 0 and i < len(colors) - 1: # Border between swatches
+            if individual_swatch_border_thickness_px > 0 and i < len(colors) - 1: 
                 draw.line([(rect[0], rect[3]), (rect[2], rect[3])], fill=swatch_border_color, width=individual_swatch_border_thickness_px)
             swatch_y_current += current_sw_h
             
-    # Draw main border around the entire canvas if specified
     if main_border > 0:
-        # Use a list of points for the rectangle outline for clarity
-        # [x0, y0, x1, y1]
         outline_rect = [0,0, canvas_w-1, canvas_h-1]
-        # Draw the border multiple times if thickness > 1, as Pillow's width parameter for rectangle outline might be limited
         for i in range(main_border):
              draw.rectangle([outline_rect[0]+i, outline_rect[1]+i, outline_rect[2]-i, outline_rect[3]-i], outline=border_color)
 
-
-    # Draw swatch separator line if specified
     if swatch_separator_thickness_px > 0 and actual_swatch_size_px > 0 and len(colors) > 0 :
         if position == 'top':
             line_y = main_border + actual_swatch_size_px 
             draw.line([(main_border, line_y), (canvas_w - main_border -1, line_y)], fill=swatch_border_color, width=swatch_separator_thickness_px)
         elif position == 'bottom':
-            line_y = main_border + img_h # Separator is between image and swatches
+            line_y = main_border + img_h 
             draw.line([(main_border, line_y), (canvas_w - main_border-1, line_y)], fill=swatch_border_color, width=swatch_separator_thickness_px)
         elif position == 'left':
             line_x = main_border + actual_swatch_size_px
             draw.line([(line_x, main_border), (line_x, canvas_h - main_border -1)], fill=swatch_border_color, width=swatch_separator_thickness_px)
         elif position == 'right':
-            line_x = main_border + img_w # Separator is between image and swatches
+            line_x = main_border + img_w 
             draw.line([(line_x, main_border), (line_x, canvas_h - main_border-1)], fill=swatch_border_color, width=swatch_separator_thickness_px)
     return canvas
 
 # --- Function to get current settings tuple and hash ---
 def get_settings_tuple_and_hash(all_image_sources_list, positions_list, output_format_val, webp_lossless_val, quant_method_label_val, num_colors_val, swatch_size_val, image_border_val, swatch_sep_val, indiv_swatch_border_val, border_color_val, swatch_border_color_val):
-    # Ensure source['bytes'] is hashable. If it's large, hashing it can be slow.
-    # Consider hashing a checksum or metadata if performance of hashing bytes becomes an issue.
     processed_sources_tuple = tuple( (src['name'], hash(src['bytes']), src['source_type'], src.get('original_input')) for src in all_image_sources_list )
-
     current_settings = (
         processed_sources_tuple,
-        frozenset(positions_list), # Use frozenset for hashability of list contents
+        frozenset(positions_list), 
         output_format_val, webp_lossless_val, quant_method_label_val, num_colors_val,
         swatch_size_val, image_border_val, swatch_sep_val, indiv_swatch_border_val,
         border_color_val, swatch_border_color_val,
@@ -421,12 +399,11 @@ col1, col2, col3 = st.columns(3)
 
 try: # Main try-except block for the entire app UI and logic
     # --- Image Sources ---
-    all_image_sources = [] # This will hold dicts: {'name': str, 'bytes': BytesIO, 'source_type': str, 'original_input': str}
+    all_image_sources = [] 
 
     with col1:
         st.subheader("Upload Images")
         allowed_extensions = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif", "ico"]
-        # Use the file_uploader_key from session state to allow resetting
         uploaded_files_from_uploader = st.file_uploader(
             "Upload multiple files. For stability, batches under 200 generations are recommended.",
             accept_multiple_files=True,
@@ -437,7 +414,7 @@ try: # Main try-except block for the entire app UI and logic
             for uploaded_file in uploaded_files_from_uploader:
                 all_image_sources.append({
                     'name': uploaded_file.name,
-                    'bytes': uploaded_file.getvalue(), # Read file bytes
+                    'bytes': uploaded_file.getvalue(), 
                     'source_type': 'upload',
                     'original_input': uploaded_file.name
                 })
@@ -445,7 +422,7 @@ try: # Main try-except block for the entire app UI and logic
     with col2:
         st.subheader("Or Fetch from URL(s)")
         image_urls_input = st.text_area("Enter image URLs (one per line)", value=st.session_state.image_url_current_input, height=150)
-        st.session_state.image_url_current_input = image_urls_input # Persist input
+        st.session_state.image_url_current_input = image_urls_input 
 
         if st.button("Fetch Images from URLs", key="fetch_urls_button"):
             urls = [url.strip() for url in image_urls_input.splitlines() if url.strip()]
@@ -460,24 +437,21 @@ try: # Main try-except block for the entire app UI and logic
                         response = requests.get(url, timeout=10, stream=True, headers=headers)
                         response.raise_for_status()
                         
-                        # Check content type more reliably
                         content_type = response.headers.get('Content-Type', '').lower()
                         if not any(img_ext in content_type for img_ext in ['jpeg', 'jpg', 'png', 'webp', 'gif', 'bmp', 'tiff', 'ico']):
-                            # If content-type is not specific, try to infer from URL
                             file_ext_from_url = os.path.splitext(url.split('?')[0])[-1].lower().replace('.', '')
-                            if file_ext_from_url not in allowed_extensions and not is_valid_image_header(response.content[:12]): # Check header if extension is not obvious
+                            if file_ext_from_url not in allowed_extensions and not is_valid_image_header(response.content[:12]): 
                                 error_messages.append(f"Skipped URL (unclear image type or not an image): {shorten_filename(url, 50)}")
-                                continue # Skip if not a recognized image type
+                                continue 
 
                         img_bytes = response.content
                         
-                        # Validate image header again after download just to be sure
                         if not is_valid_image_header(img_bytes[:12]):
                              error_messages.append(f"Skipped URL (content is not a valid image): {shorten_filename(url,50)}")
                              continue
 
-                        filename = os.path.basename(url.split("?")[0]) # Basic filename from URL
-                        if not os.path.splitext(filename)[1]: # If no extension in filename
+                        filename = os.path.basename(url.split("?")[0]) 
+                        if not os.path.splitext(filename)[1]: 
                             detected_ext = is_valid_image_header(img_bytes[:12])
                             filename = f"{filename}.{detected_ext}" if detected_ext else f"{filename}.img"
 
@@ -490,7 +464,7 @@ try: # Main try-except block for the entire app UI and logic
                         fetched_count += 1
                     except requests.exceptions.RequestException as e:
                         error_messages.append(f"Error fetching {shorten_filename(url,50)}: {e}")
-                    except Exception as e: # Catch other potential errors
+                    except Exception as e: 
                         error_messages.append(f"Unexpected error with {shorten_filename(url,50)}: {e}")
                     finally:
                         url_fetch_progress.progress((i + 1) / len(urls))
@@ -504,19 +478,10 @@ try: # Main try-except block for the entire app UI and logic
             else:
                 st.info("Please enter some URLs to fetch.")
 
-
-    # --- Combine sources and ensure no duplicates based on content (if desired, more complex) ---
-    # Simple combination based on inputs for now.
-    # If a user uploads and pastes URL of the same image, it will be treated as two.
-    # Deduplication can be added here if needed, e.g., by hashing image bytes.
-
-    # --- Settings in the third column ---
     with col3:
         st.subheader("Generation Settings")
         
-        # Available positions for the palette
         available_positions = ['top', 'bottom', 'left', 'right']
-        # Use a multiselect for choosing one or more positions
         selected_positions = st.multiselect(
             "Palette Position(s) (generates one image per selected position)",
             options=available_positions,
@@ -538,18 +503,14 @@ try: # Main try-except block for the entire app UI and logic
         num_colors = st.slider("Number of Colors in Palette", 2, 12, 6)
         swatch_size_percent = st.slider("Swatch Size (% of shorter image dimension)", 0, 50, 15, help="Size of the color swatches relative to the shorter side of the image. Set to 0 to hide swatches (colors will still be extracted if positions are selected).")
         
-        st.markdown("---") # Visual separator
+        st.markdown("---") 
         
         image_border_percent_raw = st.slider("Image Border Thickness (% of shorter image dimension)", 0, 10, 1, help="Set to 0 for no border around the original image part.")
         swatch_separator_percent_raw = st.slider("Swatch Separator Thickness (% of shorter image dimension)", 0, 5, 1, help="Thickness of the line between image and color swatches. Set to 0 for no separator.")
         individual_swatch_border_percent_raw = st.slider("Individual Swatch Border/Separator (% of shorter image dimension)", 0, 5, 0, help="Thickness of borders between individual color swatches. Set to 0 for no borders between swatches.")
 
-        # Convert percentages to actual values (or keep as is if your functions handle percentages)
-        # For now, assuming functions expect percentages or can derive pixels.
-        # These are passed as percentages to draw_layout.
-
-        default_border_color = "#CCCCCC" # Light gray
-        default_swatch_border_color = "#FFFFFF" # White
+        default_border_color = "#CCCCCC" 
+        default_swatch_border_color = "#FFFFFF" 
 
         col3_1, col3_2 = st.columns(2)
         with col3_1:
@@ -557,9 +518,6 @@ try: # Main try-except block for the entire app UI and logic
         with col3_2:
             swatch_border_color_hex = st.color_picker("Swatch Separator/Border Color", default_swatch_border_color)
 
-
-    # --- Calculate current settings hash ---
-    # This helps in determining if settings changed and previews need regeneration
     current_settings_values, current_settings_hash_val = get_settings_tuple_and_hash(
         all_image_sources, selected_positions, output_format, webp_lossless,
         quantize_method_label, num_colors, swatch_size_percent,
@@ -568,44 +526,40 @@ try: # Main try-except block for the entire app UI and logic
     )
     st.session_state.current_settings_hash = current_settings_hash_val
 
-
-    # --- Processing Logic ---
     total_possible_generations = len(all_image_sources) * len(selected_positions)
 
     def img_to_base64(pil_image, fmt='PNG', max_preview_dim=None):
-        """Converts PIL image to base64 string, optionally resizing for preview."""
         buffered = io.BytesIO()
         img_to_save = pil_image
-        if max_preview_dim: # Resize for preview display if requested
-            img_to_save = resize_image_if_needed(pil_image, max_preview_dim)
+        if max_preview_dim: 
+            img_to_save = resize_image_if_needed(pil_image.copy(), max_preview_dim) # Use .copy() for safety
 
         save_params = {}
-        if fmt == 'JPEG':
-            save_params['quality'] = 90 # Good quality for JPEG
-        elif fmt == 'WEBP':
-            save_params['lossless'] = getattr(st.session_state, 'current_webp_lossless', True) # Use session state or default
-            save_params['quality'] = 85 # Good quality for lossy WEBP
+        fmt_upper = fmt.upper()
+        if fmt_upper == 'JPEG':
+            save_params['quality'] = 90 
+        elif fmt_upper == 'WEBP':
+            save_params['lossless'] = getattr(st.session_state, 'current_webp_lossless', True) 
+            save_params['quality'] = 85 
         
         # Ensure image is in a mode compatible with the format
-        if fmt == 'JPEG' and img_to_save.mode == 'RGBA':
+        # Convert to RGB for JPEG if it has alpha
+        if fmt_upper == 'JPEG' and img_to_save.mode == 'RGBA':
             img_to_save = img_to_save.convert('RGB')
-        elif fmt == 'PNG' and img_to_save.mode == 'P': # Palette mode
-             img_to_save = img_to_save.convert('RGBA') # Convert to RGBA for better PNG save
-        elif img_to_save.mode not in ['RGB', 'RGBA', 'L'] and fmt != 'WEBP': # WEBP handles more modes
+        # Convert Palette (P) mode to RGBA for PNG to preserve transparency if any, or RGB otherwise
+        elif fmt_upper == 'PNG' and img_to_save.mode == 'P':
+             img_to_save = img_to_save.convert('RGBA') 
+        # General fallback for other modes if not L, RGB, or RGBA (WEBP handles more modes natively)
+        elif img_to_save.mode not in ['RGB', 'RGBA', 'L'] and fmt_upper != 'WEBP': 
             img_to_save = img_to_save.convert('RGB')
 
-
-        img_to_save.save(buffered, format=fmt, **save_params)
+        img_to_save.save(buffered, format=fmt_upper, **save_params)
         return base64.b64encode(buffered.getvalue()).decode()
 
     def process_single_image(pil_image, position_val, num_colors_val, quant_method_val,
                              image_border_val, swatch_sep_val, indiv_swatch_border_val,
                              border_color_val, swatch_border_color_val, swatch_size_val):
-        """Processes a single PIL image for one position."""
-        # Colors are extracted from the (potentially resized) input image
         colors = extract_palette(pil_image, num_colors_val, quant_method_val)
-        
-        # Layout is drawn using the same (potentially resized) input image and extracted colors
         generated_img = draw_layout(
             pil_image, colors, position_val,
             image_border_val, swatch_sep_val, indiv_swatch_border_val,
@@ -614,13 +568,11 @@ try: # Main try-except block for the entire app UI and logic
         return generated_img, colors
 
 
-    def update_preview_zone(preview_limit=5):
-        """Updates the preview zone with generated images."""
+    def update_preview_zone(preview_limit=MAX_PREVIEWS_IN_ZONE): # Use constant
         if not st.session_state.preview_html_parts:
-            preview_container.empty() # Clear if no previews
+            preview_container.empty() 
             return
 
-        # Display up to preview_limit previews
         num_previews_to_show = min(len(st.session_state.preview_html_parts), preview_limit)
         html_to_display = "".join(st.session_state.preview_html_parts[:num_previews_to_show])
         
@@ -632,22 +584,16 @@ try: # Main try-except block for the entire app UI and logic
 
 
     def process_image_source_and_generate(source_data, selected_pos_list, settings, is_preview_generation=False):
-        """
-        Processes a single image source (uploaded file or URL data)
-        and generates images for selected positions.
-        Updates session state for previews or full batch data.
-        """
-        nonlocal total_processed_for_preview # Access counter from outer scope for previews
+        global total_processed_for_preview # Use global keyword to modify the global counter
 
         try:
             original_pil_image = Image.open(io.BytesIO(source_data['bytes']))
-            # Ensure image is not too large for processing
-            # This is a key optimization: resize before any heavy work
             processed_pil_image = resize_image_if_needed(original_pil_image.copy(), MAX_PROCESSING_DIMENSION)
-            # Ensure it's in a common mode like RGB or RGBA after potential resize
+            
             if processed_pil_image.mode not in ('RGB', 'RGBA'):
-                processed_pil_image = processed_pil_image.convert('RGBA' if processed_pil_image.mode == 'P' else 'RGB')
-
+                # Convert P mode (palette) to RGBA to preserve potential transparency, otherwise RGB
+                convert_mode = 'RGBA' if processed_pil_image.mode == 'P' else 'RGB'
+                processed_pil_image = processed_pil_image.convert(convert_mode)
 
         except UnidentifiedImageError:
             st.warning(f"Could not identify image: {shorten_filename(source_data['name'])}. Skipping.")
@@ -658,9 +604,16 @@ try: # Main try-except block for the entire app UI and logic
 
         for position in selected_pos_list:
             if is_preview_generation and total_processed_for_preview >= MAX_PREVIEWS_IN_ZONE:
-                return # Stop generating more previews if limit reached
+                # Clean up images for the current source if we're returning early
+                del processed_pil_image
+                del original_pil_image
+                gc.collect()
+                return 
 
             try:
+                # Pass a copy of processed_pil_image to process_single_image if it might be modified
+                # or if multiple positions use the same base image and one modification shouldn't affect others.
+                # extract_palette and draw_layout currently work on copies or convert, so direct pass is okay.
                 generated_pil_image, extracted_colors = process_single_image(
                     processed_pil_image, position, settings['num_colors'], settings['quant_method'],
                     settings['image_border'], settings['swatch_sep'], settings['indiv_swatch_border'],
@@ -671,23 +624,12 @@ try: # Main try-except block for the entire app UI and logic
                 final_filename = f"{output_fname_base}_palette_{position}.{settings['output_format'].lower()}"
 
                 if is_preview_generation:
-                    # For previews, generate base64 for HTML display
-                    b64_img = img_to_base64(generated_pil_image, settings['output_format'].upper(), max_preview_dim=200) # Smaller previews
+                    b64_img = img_to_base64(generated_pil_image, settings['output_format'].upper(), max_preview_dim=200) 
                     hex_colors_str = ", ".join([f"#{''.join(f'{c:02x}' for c in col)}" for col in extracted_colors])
                     
-                    # Create a download link for the individual preview item
-                    # This requires storing the full-res preview image data temporarily or regenerating on demand
-                    # For simplicity here, we'll make the link illustrative or link to a placeholder
-                    # A real implementation would need to handle individual downloads more robustly.
-                    
-                    # Store preview data in a way that individual download can be triggered
-                    # For now, the preview HTML itself won't have a direct download of *this specific variation*
-                    # without more complex state or on-the-fly regeneration.
-                    # The main "Download All" will have the final versions.
-
                     preview_html = f"""
                     <div class='preview-item'>
-                        <img src='data:image/{settings['output_format']};base64,{b64_img}' alt='{shorten_filename(final_filename)}'>
+                        <img src='data:image/{settings['output_format'].lower()};base64,{b64_img}' alt='{shorten_filename(final_filename)}'>
                         <p class='preview-item-name' title='{final_filename}'>{shorten_filename(final_filename, 22, 8, 8)}</p>
                         <div style='font-size:0.7em; margin-bottom:5px;'>Colors: {hex_colors_str[:50]}{'...' if len(hex_colors_str)>50 else ''}</div>
                     </div>
@@ -695,62 +637,58 @@ try: # Main try-except block for the entire app UI and logic
                     st.session_state.preview_html_parts.append(preview_html)
                     total_processed_for_preview += 1
                 else:
-                    # For full batch, store image bytes for zipping
                     img_byte_arr = io.BytesIO()
                     save_params = {}
-                    if settings['output_format'].upper() == 'JPEG': save_params['quality'] = 95
-                    if settings['output_format'].upper() == 'WEBP':
+                    fmt_upper = settings['output_format'].upper()
+                    if fmt_upper == 'JPEG': save_params['quality'] = 95
+                    if fmt_upper == 'WEBP':
                         save_params['lossless'] = settings['webp_lossless']
                         save_params['quality'] = 90
                     
-                    # Ensure image is in a compatible mode for saving
-                    save_image = generated_pil_image
-                    if settings['output_format'].upper() == 'JPEG' and save_image.mode == 'RGBA':
+                    save_image = generated_pil_image # This is already a new image from draw_layout
+                    if fmt_upper == 'JPEG' and save_image.mode == 'RGBA':
                         save_image = save_image.convert('RGB')
-                    elif save_image.mode == 'P' and settings['output_format'].upper() == 'PNG':
-                        save_image = save_image.convert('RGBA') # PNGs with palette can be tricky, convert for safety
-                    elif save_image.mode not in ['RGB', 'RGBA', 'L'] and settings['output_format'].upper() != 'WEBP':
+                    elif save_image.mode == 'P' and fmt_upper == 'PNG':
+                        save_image = save_image.convert('RGBA') 
+                    elif save_image.mode not in ['RGB', 'RGBA', 'L'] and fmt_upper != 'WEBP':
                          save_image = save_image.convert('RGB')
 
-
-                    save_image.save(img_byte_arr, format=settings['output_format'].upper(), **save_params)
+                    save_image.save(img_byte_arr, format=fmt_upper, **save_params)
                     st.session_state.generated_image_data[final_filename] = img_byte_arr.getvalue()
 
             except Exception as e:
                 st.error(f"Error processing {shorten_filename(source_data['name'])} for position {position}: {e}")
             finally:
-                # Explicitly delete large objects and collect garbage
                 if 'generated_pil_image' in locals(): del generated_pil_image
-                if 'save_image' in locals() and save_image is not processed_pil_image : del save_image
+                # save_image is an alias to generated_pil_image or its converted version,
+                # so deleting generated_pil_image handles it. No need to delete save_image separately
+                # unless it was a distinct copy.
         
-        # Clean up the main processed PIL image for this source
         del processed_pil_image
-        del original_pil_image # Delete original too
-        gc.collect() # Collect garbage after processing each source file
+        del original_pil_image 
+        gc.collect() 
 
 
     # --- UI Elements for Generating ---
-    MAX_PREVIEWS_IN_ZONE = 10 # Max previews to generate/show to avoid browser slowdown
-    total_processed_for_preview = 0 # Counter for preview generation
+    # total_processed_for_preview is now global, initialized at the top.
 
-    # "Generate Preview" / "Update Preview" Button
-    # Only show if there are images and settings have changed or no preview exists
     if all_image_sources and selected_positions:
         if st.session_state.generation_stage == "initial" or \
            st.session_state.current_settings_hash != st.session_state.get('current_settings_hash_at_generation_start', None) or \
-           not st.session_state.preview_html_parts: # Regenerate if settings changed or no previews
+           not st.session_state.preview_html_parts: 
 
             if st.button("🚀 Generate Initial Previews (up to 10)", type="primary", key="generate_preview_button"):
-                st.session_state.generation_stage = "preview_generating" # Intermediate state
+                global total_processed_for_preview # Declare intent to modify global
+                
+                st.session_state.generation_stage = "preview_generating" 
                 st.session_state.preview_html_parts = []
-                st.session_state.generated_image_data = {} # Clear old full batch data
+                st.session_state.generated_image_data = {} 
                 st.session_state.zip_buffer = None
                 st.session_state.download_completed_message = False
                 post_download_message_container.empty()
 
-                # Store current settings at the start of generation
                 st.session_state.current_settings_hash_at_generation_start = st.session_state.current_settings_hash
-                st.session_state.current_webp_lossless = webp_lossless # Store for img_to_base64
+                st.session_state.current_webp_lossless = webp_lossless 
 
                 current_settings_for_processing = {
                     'num_colors': num_colors, 'quant_method': quantize_method,
@@ -763,28 +701,22 @@ try: # Main try-except block for the entire app UI and logic
                 
                 with spinner_container:
                     with st.spinner("Generating previews... please wait."):
-                        total_processed_for_preview = 0 # Reset counter
+                        total_processed_for_preview = 0 # Reset global counter
                         for source in all_image_sources:
-                            if total_processed_for_preview >= MAX_PREVIEWS_IN_ZONE:
-                                break
+                            # The check `total_processed_for_preview >= MAX_PREVIEWS_IN_ZONE` is now inside process_image_source_and_generate
                             process_image_source_and_generate(source, selected_positions, current_settings_for_processing, is_preview_generation=True)
+                            if total_processed_for_preview >= MAX_PREVIEWS_IN_ZONE: # Check again after call, in case multiple positions were processed by one call
+                                break
                 
                 st.session_state.generation_stage = "preview_generated"
-                st.rerun() # Rerun to update UI based on new state
+                st.rerun() 
 
-    # Display previews if they exist
     if st.session_state.generation_stage in ["preview_generated", "completed", "full_batch_generating"] and st.session_state.preview_html_parts:
-        update_preview_zone(preview_limit=MAX_PREVIEWS_IN_ZONE)
+        update_preview_zone() # MAX_PREVIEWS_IN_ZONE is default here
 
-
-    # --- "Generate Full Batch" Button ---
-    # Show if previews are generated and there are images
     if st.session_state.generation_stage == "preview_generated" and all_image_sources and selected_positions:
-        # If total generations > a certain threshold, show a special button or warning
-        if total_possible_generations > 50: # Example threshold
-            # Use a custom button class if Streamlit allows, or just a regular button with a strong message
-            # The CSS provided earlier has a style for `button[kind="secondary"]`
-            if generate_full_batch_button_container.button(f"⚠️ Generate Full Batch ({total_possible_generations} images) - This may take time!", key="confirm_generate_full_batch", type="secondary"): # type="secondary" might not directly apply custom CSS easily without more specific selectors.
+        if total_possible_generations > 50: 
+            if generate_full_batch_button_container.button(f"⚠️ Generate Full Batch ({total_possible_generations} images) - This may take time!", key="confirm_generate_full_batch", type="secondary"): 
                 st.session_state.full_batch_button_clicked = True
         else:
             if generate_full_batch_button_container.button(f"✅ Generate Full Batch ({total_possible_generations} images)", type="primary", key="generate_full_batch"):
@@ -792,14 +724,13 @@ try: # Main try-except block for the entire app UI and logic
         
         if st.session_state.full_batch_button_clicked:
             st.session_state.generation_stage = "full_batch_generating"
-            st.session_state.generated_image_data = {} # Clear any old data
+            st.session_state.generated_image_data = {} 
             st.session_state.zip_buffer = None
             st.session_state.download_completed_message = False
             post_download_message_container.empty()
             
-            # Ensure settings hash is current for this full batch operation
             st.session_state.current_settings_hash_at_generation_start = st.session_state.current_settings_hash
-            st.session_state.current_webp_lossless = webp_lossless # Store for img_to_base64/saving
+            st.session_state.current_webp_lossless = webp_lossless
 
             current_settings_for_processing = {
                 'num_colors': num_colors, 'quant_method': quantize_method,
@@ -810,74 +741,69 @@ try: # Main try-except block for the entire app UI and logic
                 'webp_lossless': webp_lossless
             }
 
-            # Use the preloader_and_status_container for messages during full batch
             with preloader_and_status_container:
                 st.markdown("<div class='preloader-area'><div class='preloader'></div><div class='preloader-text' id='status-text'>Processing full batch... initializing...</div></div>", unsafe_allow_html=True)
             
-            status_text_element = preloader_and_status_container.empty() # To update text
-
-            # Batch processing with progress
             progress_bar = st.progress(0)
-            total_generations_done = 0
+            total_generations_done_for_progress = 0 # Use a separate counter for progress bar logic
             
-            st.session_state.total_generations_at_start = total_possible_generations
+            st.session_state.total_generations_at_start = total_possible_generations # This is total images * positions
 
             for i, source in enumerate(all_image_sources):
-                # Update status text - this might be tricky to do smoothly with st.markdown updates
-                # A more complex JS solution or st.empty() trickery might be needed for smooth text updates.
-                # For now, a simple update per source file.
-                # status_text_element.markdown(f"<div class='preloader-area'><div class='preloader'></div><div class='preloader-text'>Processing: {shorten_filename(source['name'])}... ({i+1}/{len(all_image_sources)} files)</div></div>", unsafe_allow_html=True)
+                # The process_image_source_and_generate function processes all selected_positions for a single source.
+                # We need to know how many actual image files were generated by this call for progress.
+                # For simplicity, we assume each call to process_image_source_and_generate for a source
+                # will attempt to generate len(selected_positions) images.
+                
+                # Update status text before processing each source file
+                # This might be more complex if trying to update text within process_image_source_and_generate
+                status_text_message = f"Processing: {shorten_filename(source['name'])}... ({i+1}/{len(all_image_sources)} files)"
+                preloader_and_status_container.markdown(f"<div class='preloader-area'><div class='preloader'></div><div class='preloader-text'>{status_text_message}</div></div>", unsafe_allow_html=True)
 
                 process_image_source_and_generate(source, selected_positions, current_settings_for_processing, is_preview_generation=False)
                 
-                total_generations_done += len(selected_positions)
-                progress_val = total_generations_done / st.session_state.total_generations_at_start
-                progress_bar.progress(min(progress_val, 1.0)) # Ensure progress doesn't exceed 1.0
+                # Increment progress based on the number of positions for this source
+                total_generations_done_for_progress += len(selected_positions)
+                progress_val = total_generations_done_for_progress / st.session_state.total_generations_at_start if st.session_state.total_generations_at_start > 0 else 0
+                progress_bar.progress(min(progress_val, 1.0)) 
 
-            progress_bar.empty() # Clear progress bar
+            progress_bar.empty() 
             preloader_and_status_container.success(f"Full batch processed! {len(st.session_state.generated_image_data)} images generated.")
             
-            # Prepare ZIP file
             if st.session_state.generated_image_data:
                 zip_buffer = io.BytesIO()
                 with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-                    for filename, img_bytes in st.session_state.generated_image_data.items():
-                        zf.writestr(filename, img_bytes)
+                    for filename, img_bytes_val in st.session_state.generated_image_data.items(): # Renamed to avoid conflict
+                        zf.writestr(filename, img_bytes_val)
                 st.session_state.zip_buffer = zip_buffer.getvalue()
             
             st.session_state.generation_stage = "completed"
-            st.session_state.full_batch_button_clicked = False # Reset button click state
-            gc.collect() # Final garbage collection
+            st.session_state.full_batch_button_clicked = False 
+            gc.collect() 
             st.rerun()
 
-
-    # --- Download Buttons ---
     if st.session_state.generation_stage == "completed" and st.session_state.zip_buffer:
         download_buttons_container.download_button(
             label=f"📥 Download All as ZIP ({len(st.session_state.generated_image_data)} images)",
             data=st.session_state.zip_buffer,
             file_name=f"color_palette_batch_{time.strftime('%Y%m%d_%H%M%S')}.zip",
             mime="application/zip",
-            on_click=handle_download_click, # Callback to show message
+            on_click=handle_download_click, 
             key="download_zip_button",
             use_container_width=True
         )
         
-        # "Start Over" button after generation
         if download_buttons_container.button("🔄 Start Over / Clear All", key="start_over_completed"):
-            # Reset relevant session state variables
             st.session_state.generation_stage = "initial"
             st.session_state.preview_html_parts = []
             st.session_state.generated_image_data = {}
             st.session_state.zip_buffer = None
             st.session_state.current_settings_hash_at_generation_start = None
             st.session_state.download_completed_message = False
-            st.session_state.image_url_current_input = "" # Clear URL input
+            st.session_state.image_url_current_input = "" 
             
-            # Increment uploader key to reset file uploader
             st.session_state.file_uploader_key = f"file_uploader_{int(st.session_state.file_uploader_key.split('_')[-1]) + 1}"
             
-            # Clear containers
             preview_container.empty()
             download_buttons_container.empty()
             post_download_message_container.empty()
@@ -900,7 +826,6 @@ try: # Main try-except block for the entire app UI and logic
     # --- Footer & SEO Section ---
     st.markdown("<hr style='margin-top: 40px; margin-bottom: 20px;'>", unsafe_allow_html=True)
     st.markdown("<div class='seo-section'>", unsafe_allow_html=True)
-    # (SEO content remains the same, truncated for brevity)
     st.markdown("""
         <h2>Unlock Creative Possibilities with Batch Image Color Palettes</h2>
         <p>Our Free Color Palette Generator is designed for creators, marketers, and designers who need to quickly extract and visualize color schemes from multiple images. Whether you're planning a Pinterest board, designing Instagram content, or developing brand guidelines, this tool streamlines your workflow by automating the color palette generation process.</p>
@@ -956,16 +881,13 @@ try: # Main try-except block for the entire app UI and logic
 
 except Exception as e:
     st.error(f"A critical error occurred in the application: {e}")
-    st.exception(e) # This will print the full traceback to the console and Streamlit interface
+    st.exception(e) 
     st.warning("An issue was encountered. Some parts of the application might be reset or behave unexpectedly. Please try refreshing the page or simplifying your batch. If the problem persists, consider reducing the number or size of images.")
-    # Attempt to reset to a safe state, though a full page refresh might be better
     st.session_state.generation_stage = "initial"
     st.session_state.current_settings_hash_at_generation_start = None 
     st.session_state.download_completed_message = False
-    # Potentially clear other states if they could be corrupted
     st.session_state.preview_html_parts = []
     st.session_state.generated_image_data = {}
     st.session_state.zip_buffer = None
     gc.collect()
-
 
