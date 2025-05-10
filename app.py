@@ -10,7 +10,7 @@ import time
 
 # --- Page Setup ---
 st.set_page_config(layout="wide")
-st.title("Color Swatch Generator")
+st.title("SwatchBatch - free color palette generator")
 
 # --- Initialize Session State ---
 # Use session state to manage the generation process stages
