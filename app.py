@@ -12,7 +12,7 @@ import requests
 # --- Page Setup ---
 st.set_page_config(layout="wide")
 st.title("Free Color Palette Generator from Image")
-st.markdown("Open-source, totally free color swatch generator, perfect for automated Pinterest posts generation, batch Instagram content creation and many more.")
+st.markdown("Instantly Generate Color Palettes from Multiple Images: Your Free, Open-Source Tool for Pinterest Automation, Instagram Content, and Batch Design Work.")
 
 
 # --- Initialize Session State (Robustly) ---
@@ -28,7 +28,7 @@ default_session_state = {
     'file_uploader_key': "file_uploader_0",
     'processed_sources_cache': [], 
     'image_url_current_input': "",
-    'download_completed_message': False # For the new post-download message
+    'download_completed_message': False 
 }
 
 for key, value in default_session_state.items():
@@ -39,7 +39,7 @@ for key, value in default_session_state.items():
 spinner_container = st.empty()
 preview_container = st.container()
 download_buttons_container = st.container()
-post_download_message_container = st.container() # New container for post-download message
+post_download_message_container = st.container() 
 preloader_and_status_container = st.empty()
 generate_full_batch_button_container = st.empty()
 
@@ -134,6 +134,12 @@ st.markdown("""
         border-color: #1e7e34 !important; 
         color: white !important;
     }
+    .stDownloadButton button:disabled {
+        background-color: #6c757d !important; /* Gray when disabled */
+        border-color: #6c757d !important;
+        color: #ced4da !important;
+    }
+
 
     /* Post-Download Message & Button Styling */
     .post-download-message-container {
@@ -348,7 +354,7 @@ col1, col2, col3 = st.columns(3)
 
 try:
     with col1:
-        st.subheader("Upload Images") # Emoji removed
+        st.subheader("Upload Images") 
         allowed_extensions = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif", "ico"]
         uploaded_files_from_uploader = st.file_uploader(
             "Upload multiple files. For stability, batches under 200 generations are recommended.",
@@ -419,14 +425,14 @@ try:
                 st.error(f"Error processing URL: {e}")
     
     with col1:
-        st.subheader("Output Options") # Emoji removed
+        st.subheader("Output Options") 
         output_format = st.selectbox("Output format", ["JPG", "PNG", "WEBP"], key="output_format")
         webp_lossless = st.checkbox("Lossless WEBP", value=False, key="webp_lossless") if output_format == "WEBP" else False
         format_map = {"JPG": ("JPEG", "jpg"), "PNG": ("PNG", "png"), "WEBP": ("WEBP", "webp")}
         img_format, extension = format_map[output_format]
 
     with col2:
-        st.subheader("Layout Settings") # Emoji removed
+        st.subheader("Layout Settings") 
         positions = []
         st.write("Swatch position(s):")
         col2_row1, col2_row2 = st.columns(2), st.columns(2)
@@ -442,7 +448,7 @@ try:
         swatch_size_percent_val = st.slider("Swatch size (% of shorter image dim.)", 0.0, 100.0, 20.0, step=0.5, key="swatch_size_percent")
 
     with col3:
-        st.subheader("Borders & Lines") # Emoji removed
+        st.subheader("Borders & Lines") 
         image_border_thickness_percent_val = st.slider("Image Border (%)", 0.0, 20.0, 5.0, step=0.1, key="image_border_thickness_percent")
         swatch_separator_thickness_percent_val = st.slider("Swatch-Image Separator (%)", 0.0, 20.0, 3.5, step=0.1, key="swatch_separator_thickness_percent")
         individual_swatch_border_thickness_percent_val = st.slider("Individual Swatch Border (%)", 0.0, 20.0, 5.0, step=0.1, key="individual_swatch_border_thickness_percent")
@@ -463,7 +469,7 @@ try:
         st.session_state.zip_buffer = None
         st.session_state.total_generations_at_start = 0
         st.session_state.full_batch_button_clicked = False
-        st.session_state.download_completed_message = False # Reset this flag
+        st.session_state.download_completed_message = False 
         generate_full_batch_button_container.empty()
         st.session_state.current_settings_hash = new_settings_hash 
         st.rerun() 
@@ -504,7 +510,7 @@ try:
                  st.session_state.preview_html_parts = [] 
                  st.session_state.generated_image_data = {}
                  st.session_state.zip_buffer = None
-                 st.session_state.download_completed_message = False # Reset for new batch
+                 st.session_state.download_completed_message = False 
 
             preloader_and_status_container.markdown(f"<div class='preloader-area'><div class='preloader'></div><span class='preloader-text'>Generating (0/{current_processing_limit})...</span></div>", unsafe_allow_html=True)
             download_buttons_container.empty(); generate_full_batch_button_container.empty(); post_download_message_container.empty()
@@ -591,8 +597,7 @@ try:
                     st.session_state.generation_stage = "completed"
                     zip_buffer_current_run.seek(0)
                     st.session_state.zip_buffer = zip_buffer_current_run
-                    # Note: download_completed_message is set by the button's on_click, not here.
-
+                   
         if st.session_state.preview_html_parts:
             preview_display_area.markdown("<div id='preview-zone'>" + "\n".join(st.session_state.preview_html_parts) + "</div>", unsafe_allow_html=True)
 
@@ -607,6 +612,8 @@ try:
                 st.session_state.generation_stage = "full_batch_generating"; st.session_state.full_batch_button_clicked = True; st.rerun()
 
         download_buttons_container.empty()
+        download_button_help_text = "Upload your images and set your adjustments first to enable download." # Default for no inputs
+
         if st.session_state.generation_stage == "completed" and st.session_state.zip_buffer and st.session_state.zip_buffer.getbuffer().nbytes > zipfile.sizeFileHeader:
             download_buttons_container.download_button(
                 label=f"Download All as ZIP ({extension.upper()})", 
@@ -615,14 +622,23 @@ try:
                 mime="application/zip", 
                 use_container_width=True, 
                 key="dl_zip_final",
-                on_click=handle_download_click # Callback to show message
+                on_click=handle_download_click 
             )
-        elif st.session_state.generation_stage == "preview_generated" or (st.session_state.generation_stage == "initial" and total_generations > 6) :
-            download_buttons_container.download_button(label=f"Download All as ZIP ({extension.upper()})", data=io.BytesIO(), disabled=True,
-                                 file_name="temp.zip", mime="application/zip", use_container_width=True, key="dl_zip_disabled_preview", help="Generate full batch for download.")
-        else: 
-            download_buttons_container.download_button(label=f"Download All as ZIP ({extension.upper()})", data=io.BytesIO(), disabled=True,
-                                 file_name="temp.zip", mime="application/zip", use_container_width=True, key="dl_zip_disabled_inter", help="Processing or no batch ready.")
+        else: # Covers initial, preview, or other non-completed states
+            if all_image_sources and positions: # Inputs are present, but not fully generated
+                 download_button_help_text = "Unlimited batch download will be available after full generation (ZIP)."
+            # If no inputs, default help text is already set.
+            
+            download_buttons_container.download_button(
+                label=f"Download All as ZIP ({extension.upper()})", 
+                data=io.BytesIO(), 
+                disabled=True,
+                file_name="temp.zip", 
+                mime="application/zip", 
+                use_container_width=True, 
+                key="dl_zip_disabled_main", 
+                help=download_button_help_text
+            )
         
         with post_download_message_container:
             if st.session_state.get('download_completed_message', False):
@@ -639,7 +655,7 @@ try:
         st.session_state.generation_stage = "initial"; st.session_state.preview_html_parts = []
         st.session_state.generated_image_data = {}; st.session_state.zip_buffer = None
         st.session_state.total_generations_at_start = 0; st.session_state.full_batch_button_clicked = False
-        st.session_state.download_completed_message = False # Reset if no inputs
+        st.session_state.download_completed_message = False 
         
         generate_full_batch_button_container.empty(); preview_container.empty(); download_buttons_container.empty()
         post_download_message_container.empty(); spinner_container.empty(); preloader_and_status_container.empty()
@@ -647,12 +663,19 @@ try:
         if all_image_sources and not positions: st.info("Select at least one swatch position.")
         elif not all_image_sources: st.info("Upload images or enter a URL to start.")
         
-        download_buttons_container.download_button(label=f"Download All as ZIP", data=io.BytesIO(), disabled=True,
-                             file_name="ColorSwatches.zip", mime="application/zip", use_container_width=True, 
-                             key="dl_zip_initial_disabled", help="Upload images and select positions.")
+        download_buttons_container.download_button(
+            label=f"Download All as ZIP", 
+            data=io.BytesIO(), 
+            disabled=True,
+            file_name="ColorSwatches.zip", 
+            mime="application/zip", 
+            use_container_width=True, 
+            key="dl_zip_initial_disabled", 
+            help="Upload your images and set your adjustments first to enable download."
+        )
 
     # --- SEO Text Section ---
-    st.markdown("<hr class='seo-section-divider'>", unsafe_allow_html=True) # Visual divider
+    st.markdown("<hr class='seo-section-divider'>", unsafe_allow_html=True) 
     st.markdown("<div class='seo-section'>", unsafe_allow_html=True)
     
     seo_col1, seo_col2 = st.columns(2)
@@ -717,5 +740,4 @@ except Exception as e:
     st.session_state.generation_stage = "initial"
     st.session_state.current_settings_hash_at_generation_start = None 
     st.session_state.download_completed_message = False
-
 
