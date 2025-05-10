@@ -135,7 +135,7 @@ st.markdown("""
         color: white !important;
     }
     .stDownloadButton button:disabled {
-        background-color: #6c757d !important; /* Gray when disabled */
+        background-color: #f6f6f6 !important; /* Gray when disabled */
         border-color: #6c757d !important;
         color: #ced4da !important;
     }
@@ -151,7 +151,7 @@ st.markdown("""
         margin-bottom: 15px; font-size: 1em; color: #004085; /* Darker blue text */
     }
     .buy-dev-coffee-button {
-        background-color: #FFDD00 !important; /* Standard BMC yellow */
+        background-color: #fff7dc !important; /* Standard BMC yellow */
         color: #000000 !important; /* Black text */
         border: 1px solid #000000 !important;
         padding: 10px 20px !important;
