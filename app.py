@@ -357,7 +357,7 @@ try:
         st.subheader("Upload Images") 
         allowed_extensions = ["jpg", "jpeg", "png", "webp", "jfif", "bmp", "tiff", "tif", "ico"]
         uploaded_files_from_uploader = st.file_uploader(
-            "Upload multiple files. For stability, batches under 200 generations are recommended.",
+            "Upload multiple files. For stability, batches under 20 generations are recommended.",
             accept_multiple_files=True,
             type=allowed_extensions,
             key=st.session_state.file_uploader_key
